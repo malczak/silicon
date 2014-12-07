@@ -9,6 +9,12 @@
 #import "Silicon.h"
 #import "Reflection.h"
 
+
+NSString * const SI_SILICON = @"Silicon";
+NSString * const SI_LOGGER = @"Logger";
+NSString * const SI_COREDATA = @"CoreData";
+NSString * const SI_WODUTILS = @"WodUtils";
+
 typedef NS_ENUM(NSUInteger, HiggsType){
     HIGGS_TYPE_UNDEF,
     HIGGS_TYPE_DIRECT,
@@ -17,7 +23,15 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     HIGGS_TYPE_BLOCK
 };
 
+@interface Silicon (SiliconPrivate)
+
+-(void)wire:(NSObject *)object withTracking:(BOOL)trackObject;
+
+@end
+
 @implementation Silicon {
+    dispatch_queue_t wiredObjectsQueue;
+    NSHashTable *wiredObjects;
     dispatch_queue_t servicesQueue;
     NSMutableDictionary *services;
 }
@@ -27,12 +41,13 @@ typedef NS_ENUM(NSUInteger, HiggsType){
 }
 
 +(instancetype)sharedInstance{
-    static Silicon *instance = nil;
+    static Silicon *silicon = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^(){
-        instance = [[Silicon alloc] init];
+        silicon = [[Silicon alloc] init];
+        [silicon service:SI_SILICON withObject:silicon];
     });
-    return instance;
+    return silicon;
 }
 
 - (id)init {
@@ -40,6 +55,11 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     if(self) {
         servicesQueue = dispatch_queue_create("pl.printu.silicon.servicesQueue", DISPATCH_QUEUE_SERIAL);
         services = [NSMutableDictionary dictionary];
+        
+        wiredObjectsQueue = dispatch_queue_create("pl.printu.silicon.wiredObjectsQueue", DISPATCH_QUEUE_CONCURRENT);
+        wiredObjects = [NSHashTable weakObjectsHashTable];
+        
+        self.trackAllWiredObjects = NO;
     }
     return self;
 }
@@ -76,6 +96,9 @@ typedef NS_ENUM(NSUInteger, HiggsType){
 
     NSAssert(!serviceNameExists, @"Service '%@' already in use", serviceName);
 
+    id<SILoggerInterface> logger =  [self getService:SI_LOGGER];
+    [logger debug:[NSString stringWithFormat:@"Add '%@' service", serviceName]];
+    
     dispatch_barrier_async(servicesQueue, ^(){
         if(weakServices && weakSelf) {
             [weakServices setObject:higgs forKey:serviceName];
@@ -125,76 +148,139 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     return higgs;
 }
 
+-(Higgs *)getServiceHiggsByClass:(NSString*) serviceClassName {
+    __block Higgs *higgs = nil;
+
+    if(serviceClassName) {
+    
+        BOOL doResolve = self.resolveServicesOnWire;
+        
+        dispatch_barrier_sync(servicesQueue, ^(){
+            [services enumerateKeysAndObjectsUsingBlock:^(NSString *service, Higgs *item, BOOL *stop){
+                
+                if( doResolve ) {
+                    [item resolve];
+                }
+                
+                if( [serviceClassName isEqualToString:item.className] ) {
+                    higgs = item;
+                    *stop = YES;
+                }
+                
+            }];
+        });
+        
+    }
+    
+    return higgs;
+}
+
 - (void)wire:(NSObject*)object
+{
+    [self wire:object withTracking:self.trackAllWiredObjects];
+}
+
+-(void)wire:(NSObject *)object withTracking:(BOOL)trackObject
 {
     if(![object conformsToProtocol:@protocol(SiliconInjectable)]){
         return;
     }
-
+    
+    // keep track of wired objects, this prevents from multiple wire passes
+    if(trackObject) {
+        __block BOOL alreadyWired = NO;
+        __weak NSObject* weakObject = object;
+        dispatch_barrier_sync(wiredObjectsQueue, ^(){
+            alreadyWired = weakObject && [wiredObjects containsObject:weakObject];
+        });
+        
+        if(alreadyWired) {
+            return;
+        }
+        
+        dispatch_barrier_async(wiredObjectsQueue, ^(){
+            if(weakObject) {
+                [wiredObjects addObject:weakObject];
+            }
+        });
+    }
+    
     Reflection *reflection = [Reflection reflectionFor:object];
-
+    id<SILoggerInterface> logger = [self getService:SI_LOGGER];
+    
+    [logger debug:[NSString stringWithFormat:@"Wire object %@", reflection.className]];
+    
     if(reflection) {
         [reflection enumeratePropertiesUsingBlock:^(Property *aProperty, Reflection *aReflection){
             if(![aProperty isClass]) {
                 return;
             }
-
+            
             NSString *className = [aProperty resolve];
             if(!className) {
                 return;
             }
-
-            Higgs *higgs = [self getServiceHiggs:aProperty.name];
-            if(!higgs) {
-                return ;
+            
+            Higgs *higgs = nil;
+            
+            higgs = [self getServiceHiggsByClass:className];
+            
+            if(!higgs) { // this will return nil for not fully resolved services
+                
+                NSString *serviceName = [aProperty resolveServiceName];
+                higgs = [self getServiceHiggs:serviceName];
+                if(!higgs) {
+                    return ;
+                }
+                
             }
-
+            
             NSObject *service = [higgs resolve];
-            if(![higgs.className isEqualToString:[aProperty resolve]]) {
+            if(![higgs.className isEqualToString:className]) {
                 return ;
             }
-
+            
             if( [aProperty isReadonly] ) {
-                NSLog(@"Cannot wire readonly property '%@'", aProperty.name);
+                [logger error:[NSString stringWithFormat:@"Cannot wire readonly property '%@'", aProperty.name]];
                 return;
             }
-
+            
             if( ![aProperty isWeak] ) {
-                NSLog(@"Warning - its better to use weak to autowired property '%@'", aProperty.name);
+                [logger warning:[NSString stringWithFormat:@"Use weak autowired property '%@'", aProperty.name]];
             }
-
-            NSLog(@"SET %@ > - %@(%@)", aReflection.className, aProperty.name, aProperty.attributes);
-
+            
+            [logger debug:[NSString stringWithFormat:@"SET %@ > - %@(%@)", aReflection.className, aProperty.name, aProperty.attributes]];
+            
             /*
-            1. if setter is defined - call it
-            2. try key-value to set property
-            3. try to set iVar
+             1. if setter is defined - call it
+             2. try key-value to set property
+             3. try to set iVar
              */
-
+            
             if([aProperty hasSetter]) {
                 SEL setterSelector = NSSelectorFromString(aProperty.setter);
                 if([object respondsToSelector:setterSelector]) {
-                    #pragma clang diagnostic push
-                    #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
                     [object performSelector:setterSelector withObject:service];
-                    #pragma clang diagnostic pop
+#pragma clang diagnostic pop
                 }
             } else
-            if([object respondsToSelector:@selector(setValue:forKey:)]) {
-                [object setValue:service forKey:aProperty.name];
-            } else
-            if(aProperty.ivar) {
-                Ivar ivar = class_getInstanceVariable(aReflection.class, aProperty.ivar.UTF8String);
-                if(ivar) {
-                    object_setIvar(object, ivar, service);
-                }
-            } else {
-                // todo show warning
-            }
-
+                if([object respondsToSelector:@selector(setValue:forKey:)]) {
+                    [object setValue:service forKey:aProperty.name];
+                } else
+                    if(aProperty.ivar) {
+                        Ivar ivar = class_getInstanceVariable(aReflection.class, aProperty.ivar.UTF8String);
+                        if(ivar) {
+                            object_setIvar(object, ivar, service);
+                        }
+                    } else {
+                        // todo show warning
+                        [logger warning:@"Unable to set property"];
+                    }
+            
         }];
     }
-
 }
 
 - (void)dealloc {
@@ -212,7 +298,7 @@ typedef NS_ENUM(NSUInteger, HiggsType){
 
     NSAssert(higgsDefinition != nil, @"Higgs it not defined");
 
-    self = [super init];
+    self = [self init];
     if(self) {
         initToken = 0l;
         setupToken = 0l;
@@ -248,7 +334,7 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     return object;
 }
 
-+ (id) higgsWithType:(HiggsType) type andDefinition:(id) definition  {
++ (id)higgsWithType:(HiggsType) type andDefinition:(id) definition  {
     return [[Higgs alloc] initWithType:type andDefinition:definition];
 }
 
@@ -269,6 +355,10 @@ typedef NS_ENUM(NSUInteger, HiggsType){
 }
 
 - (void)doResolveService {
+    if(object) {
+        return;
+    }
+    
     NSObject* (^classConstructor)(Class) = ^NSObject*(Class objectClass) {
         SEL initSelector = NSSelectorFromString(@"initWithSi:");
         Method initWithSiMethod = class_getInstanceMethod(objectClass, initSelector);
@@ -308,7 +398,7 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     NSAssert(object != nil, @"Service not resolved");
     char const *classNameCStr = object_getClassName(object);
     _className = [NSString stringWithCString:classNameCStr encoding:NSUTF8StringEncoding];
-    [self.si wire:object];
+    [self.si wire:object withTracking:YES];
 }
 
 - (void)dealloc {

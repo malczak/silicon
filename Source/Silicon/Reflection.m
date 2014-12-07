@@ -4,6 +4,8 @@
 //
 
 #import <objc/runtime.h>
+#import "Silicon.h"
+#import "SILoggerInterface.h"
 #import "Reflection.h"
 
 @interface ReflectionCache : NSObject
@@ -186,6 +188,13 @@ char const * const PROPERTY_SI = "si";
     return descriptor;
 }
 
+-(NSString*)resolveServiceName {
+    if(!attrs.prefixed) {
+        return self.name;
+    }
+    return self.serviceName;
+}
+
 - (NSString *)nameRemovingPrefix {
     if(!attrs.prefixed) {
         return self.name;
@@ -227,7 +236,9 @@ char const * const PROPERTY_SI = "si";
 
         return name;
     };
-
+    
+    id<SILoggerInterface> logger = [[Silicon sharedInstance] getService:SI_LOGGER];
+    
     while(attrChr < lastChr) {
         char c = *attrChr;
         attrChr += 1;
@@ -250,7 +261,7 @@ char const * const PROPERTY_SI = "si";
                 }
 
                 descriptor = parseName(&attrChr, lastChr);
-                NSLog(@"type %@",descriptor);
+                [logger debug:[NSString stringWithFormat:@"type %@",descriptor]];
                 break;
             case 'R':
                 attrs.readonly = YES;
@@ -267,12 +278,12 @@ char const * const PROPERTY_SI = "si";
             case 'G':
                 attrs.getter = YES;
                 _getter = parseName(&attrChr, lastChr);
-                NSLog(@"getter %@",_getter);
+                [logger debug:[NSString stringWithFormat:@"getter %@",_getter]];
                 break;
             case 'S':
                 attrs.setter = YES;
                 _setter = parseName(&attrChr, lastChr);
-                NSLog(@"setter %@",_setter);
+                [logger debug:[NSString stringWithFormat:@"setter %@",_setter]];
                 break;
             case 'D':
                 attrs.dynamic = YES;
@@ -285,7 +296,7 @@ char const * const PROPERTY_SI = "si";
                 break;
             case 'V':
                 _ivar = parseName(&attrChr, lastChr);
-                NSLog(@"Property iVar %@",_ivar);
+                [logger debug:[NSString stringWithFormat:@"Property iVar %@",_ivar]];
                 break;
         }
     }

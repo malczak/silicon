@@ -7,6 +7,16 @@
 #import <Foundation/Foundation.h>
 #import "UIViewController+Silicon.h"
 
+// todo move it
+#import "SILogger.h"
+#import "SIPGCoreData.h"
+
+// todo move it
+extern NSString * const SI_SILICON;
+extern NSString * const SI_LOGGER;
+extern NSString * const SI_COREDATA;
+extern NSString * const SI_WODUTILS;
+
 @class Higgs;
 @class Silicon;
 
@@ -35,6 +45,12 @@
 // wire object with silicon services
 -(void)wire:(NSObject*)object;
 
+// store all wired objects in weak table (default NO)
+@property (nonatomic, assign) BOOL trackAllWiredObjects;
+
+// force service resolving while performing object wiring (default NO)
+@property (nonatomic, assign) BOOL resolveServicesOnWire;
+
 @end
 
 
@@ -52,7 +68,7 @@ typedef NS_ENUM(NSUInteger, HiggsType);
 @property (nonatomic, weak) Silicon *si;
 @property (nonatomic, readonly) NSString *className;
 
--(id)resolve;
+-(id) resolve;
 
 +(id) higgsWithObject:(NSObject*) object;
 
