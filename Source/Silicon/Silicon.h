@@ -15,7 +15,6 @@
 extern NSString * const SI_SILICON;
 extern NSString * const SI_LOGGER;
 extern NSString * const SI_COREDATA;
-extern NSString * const SI_WODUTILS;
 
 @class Higgs;
 @class Silicon;
@@ -28,11 +27,18 @@ extern NSString * const SI_WODUTILS;
 +(instancetype) si;
 +(instancetype) sharedInstance;
 
-// define services
+// define shared services
 -(void) service:(NSString*) serviceName withBlock:(NSObject*(^)(Silicon *)) serviceBlock;
 -(void) service:(NSString*) serviceName withObject:(id) serviceObject;
 -(void) service:(NSString*) serviceName withClass:(Class) serviceClass;
 -(void) service:(NSString*) serviceName withClassName:(NSString*) serviceClassName;
+
+// define services
+-(void) service:(NSString*) serviceName withBlock:(NSObject*(^)(Silicon *)) serviceBlock shared:(BOOL)shared;
+-(void) service:(NSString*) serviceName withObject:(id) serviceObject shared:(BOOL)shared;
+-(void) service:(NSString*) serviceName withClass:(Class) serviceClass shared:(BOOL)shared;
+-(void) service:(NSString*) serviceName withClassName:(NSString*) serviceClassName shared:(BOOL)shared;
+
 
 // access services
 +(id) getService:(NSString*) serviceName;
@@ -61,6 +67,7 @@ typedef NS_ENUM(NSUInteger, HiggsType);
     dispatch_once_t initToken;
     dispatch_once_t setupToken;
     HiggsType type;
+    BOOL shared;
     id definition;
     id object;
 }
@@ -70,12 +77,12 @@ typedef NS_ENUM(NSUInteger, HiggsType);
 
 -(id) resolve;
 
-+(id) higgsWithObject:(NSObject*) object;
++(id) higgsWithObject:(NSObject*) object shared:(BOOL) shared;
 
-+(id) higgsWithClass:(Class) objectClass;
++(id) higgsWithClass:(Class) objectClass shared:(BOOL) shared;
 
-+(id) higgsWithClassName:(NSObject*) objectClassName;
++(id) higgsWithClassName:(NSObject*) objectClassName shared:(BOOL) shared;
 
-+(id) higgsWithBlock:(NSObject*(^)(Silicon *si)) objectBlock;
++(id) higgsWithBlock:(NSObject*(^)(Silicon *si)) objectBlock shared:(BOOL) shared;
 
 @end

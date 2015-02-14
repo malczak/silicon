@@ -36,7 +36,9 @@
 
 -(BOOL) hasPrefix;
 
--(id)resolve;
+-(id) resolve; // resolve Class Name - nil for non object properties
+
+-(NSString*) resolveServiceName; // resolve potential class type
 
 -(NSString*) nameRemovingPrefix;
 

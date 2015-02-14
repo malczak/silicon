@@ -13,7 +13,6 @@
 NSString * const SI_SILICON = @"Silicon";
 NSString * const SI_LOGGER = @"Logger";
 NSString * const SI_COREDATA = @"CoreData";
-NSString * const SI_WODUTILS = @"WodUtils";
 
 typedef NS_ENUM(NSUInteger, HiggsType){
     HIGGS_TYPE_UNDEF,
@@ -66,23 +65,45 @@ typedef NS_ENUM(NSUInteger, HiggsType){
 
 -(void) service:(NSString*) serviceName withBlock:(NSObject*(^)(Silicon *)) serviceBlock
 {
-    [self service:serviceName withHiggs:[Higgs higgsWithBlock:serviceBlock]];
+    [self service:serviceName withBlock:serviceBlock shared:YES];
 }
 
 -(void) service:(NSString *)serviceName withObject:(id) serviceObject
 {
-    [self service:serviceName withHiggs:[Higgs higgsWithObject:serviceObject]];
+    [self service:serviceName withObject:serviceObject shared:YES];
 }
 
 -(void) service:(NSString*) serviceName withClass:(Class) serviceClass
 {
-    [self service:serviceName withHiggs:[Higgs higgsWithClass:serviceClass]];
+    [self service:serviceName withClass:serviceClass shared:YES];
 }
 
 -(void) service:(NSString*) serviceName withClassName:(NSString*) serviceClassName
 {
-    [self service:serviceName withHiggs:[Higgs higgsWithClassName:serviceClassName]];
+    [self service:serviceName withClassName:serviceClassName shared:YES];
 }
+
+
+-(void) service:(NSString*) serviceName withBlock:(NSObject*(^)(Silicon *)) serviceBlock shared:(BOOL)shared
+{
+    [self service:serviceName withHiggs:[Higgs higgsWithBlock:serviceBlock shared:YES]];
+}
+
+-(void) service:(NSString*) serviceName withObject:(id) serviceObject shared:(BOOL)shared
+{
+    [self service:serviceName withHiggs:[Higgs higgsWithObject:serviceObject shared:YES]];
+}
+
+-(void) service:(NSString*) serviceName withClass:(Class) serviceClass shared:(BOOL)shared
+{
+    [self service:serviceName withHiggs:[Higgs higgsWithClass:serviceClass shared:YES]];
+}
+
+-(void) service:(NSString*) serviceName withClassName:(NSString*) serviceClassName shared:(BOOL)shared
+{
+    [self service:serviceName withHiggs:[Higgs higgsWithClassName:serviceClassName shared:YES]];
+}
+
 
 -(void) service:(NSString*) serviceName withHiggs:(Higgs *)higgs
 {
@@ -141,9 +162,9 @@ typedef NS_ENUM(NSUInteger, HiggsType){
         higgs = [services objectForKey:serviceName];
     });
 
-    if(higgs) {
-        [higgs resolve];
-    }
+//    if(higgs) {
+//        [higgs resolve];
+//    }
 
     return higgs;
 }
@@ -294,7 +315,7 @@ typedef NS_ENUM(NSUInteger, HiggsType){
 
 @implementation Higgs
 
--(id) initWithType:(HiggsType) higgsType andDefinition:(id) higgsDefinition {
+-(id) initWithType:(HiggsType) higgsType andDefinition:(id) higgsDefinition shared:(BOOL) higgsShared {
 
     NSAssert(higgsDefinition != nil, @"Higgs it not defined");
 
@@ -306,6 +327,7 @@ typedef NS_ENUM(NSUInteger, HiggsType){
         object = nil;
         type = higgsType;
         definition = higgsDefinition;
+        shared = higgsShared;
     }
     return self;
 }
@@ -334,24 +356,24 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     return object;
 }
 
-+ (id)higgsWithType:(HiggsType) type andDefinition:(id) definition  {
-    return [[Higgs alloc] initWithType:type andDefinition:definition];
++ (id)higgsWithType:(HiggsType) type andDefinition:(id) definition shared:(BOOL) shared;  {
+    return [[Higgs alloc] initWithType:type andDefinition:definition shared:shared];
 }
 
-+ (id)higgsWithObject:(NSObject *)object {
-    return [Higgs higgsWithType:HIGGS_TYPE_DIRECT andDefinition:object];
++ (id)higgsWithObject:(NSObject *)object shared:(BOOL) shared; {
+    return [Higgs higgsWithType:HIGGS_TYPE_DIRECT andDefinition:object shared:shared];
 }
 
-+ (id)higgsWithClass:(Class)objectClass {
-    return [Higgs higgsWithType:HIGGS_TYPE_CLASS andDefinition:objectClass];
++ (id)higgsWithClass:(Class)objectClass shared:(BOOL) shared; {
+    return [Higgs higgsWithType:HIGGS_TYPE_CLASS andDefinition:objectClass shared:shared];
 }
 
-+ (id)higgsWithClassName:(NSObject *)objectClassName {
-    return [Higgs higgsWithType:HIGGS_TYPE_CLASSREF andDefinition:objectClassName];
++ (id)higgsWithClassName:(NSObject *)objectClassName shared:(BOOL) shared; {
+    return [Higgs higgsWithType:HIGGS_TYPE_CLASSREF andDefinition:objectClassName shared:shared];
 }
 
-+ (id)higgsWithBlock:(NSObject*(^)(Silicon *si))objectBlock {
-    return [Higgs higgsWithType:HIGGS_TYPE_BLOCK andDefinition:[objectBlock copy]];
++ (id)higgsWithBlock:(NSObject*(^)(Silicon *si))objectBlock shared:(BOOL) shared; {
+    return [Higgs higgsWithType:HIGGS_TYPE_BLOCK andDefinition:[objectBlock copy] shared:shared];
 }
 
 - (void)doResolveService {
@@ -389,9 +411,11 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     if(type == HIGGS_TYPE_DIRECT) {
         object = definition;
     }
-
-    type = HIGGS_TYPE_DIRECT;
-    definition = nil;
+    
+    if(shared) {
+        type = HIGGS_TYPE_DIRECT;
+        definition = nil;
+    }
 }
 
 - (void)setupService {
