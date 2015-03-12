@@ -40,8 +40,6 @@
 
 -(NSString*) resolveServiceName; // resolve potential class type
 
--(NSString*) nameRemovingPrefix;
-
 @end
 
 @interface Reflection : NSObject

@@ -64,7 +64,6 @@ typedef NS_ENUM(NSUInteger, HiggsType);
 
 @interface Higgs : NSObject {
     dispatch_semaphore_t initSem;
-    dispatch_once_t initToken;
     dispatch_once_t setupToken;
     HiggsType type;
     BOOL shared;

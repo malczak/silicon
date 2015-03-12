@@ -68,7 +68,8 @@
 @end;
 
 
-char const * const PROPERTY_SI = "si";
+static char const * const PROPERTY_SI = "si";
+static char const * const PROPERTY_SILICON = "silicon";
 
 @implementation Property {
 
@@ -96,9 +97,12 @@ char const * const PROPERTY_SI = "si";
     NSString *descriptor;
 }
 
-- (id)initWithProperty:(objc_property_t)property_t {
+- (id)initWithProperty:(objc_property_t)property_t
+{
     self = [super init];
-    if(self) {
+    
+    if(self)
+    {
         type = TYPE_UNDEF;
 
         char const *nameCStr = property_getName(property_t);
@@ -106,20 +110,8 @@ char const * const PROPERTY_SI = "si";
         _serviceName = _name;
 
         [self setDefaultAttrs];
-        /*
-            Allowed prefixes are siNameOfService, si_NameOfService
-         */
-        UInt8 prefixLength = 0;
-        if((strlen(nameCStr) > strlen(PROPERTY_SI)) && ((*nameCStr == *PROPERTY_SI) && (*(nameCStr + 1) == *(PROPERTY_SI + 1)))) {
-            prefixLength += 2;
-            if(!isalnum(*(nameCStr + 2)) || isupper(*(nameCStr + 2))) {
-                prefixLength += 1;
-            }
-            attrs.prefixed = YES;
-            _serviceName = [[_name substringFromIndex:prefixLength] capitalizedString];
-        }
-        attrs.prefixed = (prefixLength > 0);
-
+        
+        [self resolvePrefix:nameCStr];
 
         char const *attributesCStr = property_getAttributes(property_t);
         _attributes = [NSString stringWithCString:attributesCStr encoding:NSUTF8StringEncoding];
@@ -132,7 +124,8 @@ char const * const PROPERTY_SI = "si";
     return self;
 }
 
-- (void)setDefaultAttrs {
+- (void)setDefaultAttrs
+{
     attrs.copy = NO;
     attrs.readonly = NO;
     attrs.retain = NO;
@@ -142,6 +135,35 @@ char const * const PROPERTY_SI = "si";
     attrs.dynamic = NO;
     attrs.weak = NO;
     attrs.garbage = NO;
+}
+
+-(void) resolvePrefix:(char const * const)nameCStr
+{
+    /*
+     Allowed prefixes are siNameOfService, si_NameOfService
+     */
+    
+    UInt8 prefixLength = 0;
+    if(strlen(nameCStr) > strlen(PROPERTY_SI))
+    {
+        if(((*nameCStr == *PROPERTY_SI) && (*(nameCStr + 1) == *(PROPERTY_SI + 1))))
+        {
+            if(strcasecmp(nameCStr, PROPERTY_SILICON) != 0)
+            {
+                prefixLength += 2;
+                if(!isalnum(*(nameCStr + 2)) || isupper(*(nameCStr + 2)))
+                {
+                    prefixLength += 1;
+                }
+                _serviceName = [[_name substringFromIndex:prefixLength] capitalizedString];
+            }
+            
+            attrs.prefixed = YES;
+        }
+        
+    }
+    
+    attrs.prefixed = (prefixLength > 0);
 }
 
 -(BOOL) isGeneric {
@@ -189,13 +211,6 @@ char const * const PROPERTY_SI = "si";
 }
 
 -(NSString*)resolveServiceName {
-    if(!attrs.prefixed) {
-        return self.name;
-    }
-    return self.serviceName;
-}
-
-- (NSString *)nameRemovingPrefix {
     if(!attrs.prefixed) {
         return self.name;
     }
