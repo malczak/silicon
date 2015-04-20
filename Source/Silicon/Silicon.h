@@ -39,6 +39,12 @@ extern NSString * const SI_COREDATA;
 -(void) service:(NSString*) serviceName withClass:(Class) serviceClass shared:(BOOL)shared;
 -(void) service:(NSString*) serviceName withClassName:(NSString*) serviceClassName shared:(BOOL)shared;
 
+// define limited instance services
+-(void) service:(NSString*) serviceName withBlock:(NSObject*(^)(Silicon *)) serviceBlock count:(NSUInteger)count;
+-(void) service:(NSString*) serviceName withObject:(id) serviceObject count:(NSUInteger)count;
+-(void) service:(NSString*) serviceName withClass:(Class) serviceClass count:(NSUInteger)count;
+-(void) service:(NSString*) serviceName withClassName:(NSString*) serviceClassName count:(NSUInteger)count;
+
 
 // access services
 +(id) getService:(NSString*) serviceName;

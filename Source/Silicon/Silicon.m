@@ -22,6 +22,12 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     HIGGS_TYPE_BLOCK
 };
 
+@interface Higgs ()
+
+@property (nonatomic, assign) NSInteger count;
+
+@end
+
 @interface Silicon (SiliconPrivate)
 
 -(void)wire:(NSObject *)object withTracking:(BOOL)trackObject;
@@ -104,6 +110,34 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     [self service:serviceName withHiggs:[Higgs higgsWithClassName:serviceClassName shared:YES]];
 }
 
+-(void) service:(NSString*) serviceName withBlock:(NSObject*(^)(Silicon *)) serviceBlock count:(NSUInteger)count
+{
+    Higgs *higgs = [Higgs higgsWithBlock:serviceBlock shared:NO];
+    higgs.count = MAX(1, count);
+    [self service:serviceName withHiggs:higgs];
+}
+
+-(void) service:(NSString*) serviceName withObject:(id) serviceObject count:(NSUInteger)count
+{
+    Higgs *higgs = [Higgs higgsWithObject:serviceObject shared:NO];
+    higgs.count = MAX(1, count);
+    [self service:serviceName withHiggs:higgs];
+}
+
+-(void) service:(NSString*) serviceName withClass:(Class) serviceClass count:(NSUInteger)count
+{
+    Higgs *higgs = [Higgs higgsWithClass:serviceClass shared:NO];
+    higgs.count = MAX(1, count);
+    [self service:serviceName withHiggs:higgs];
+}
+
+-(void) service:(NSString*) serviceName withClassName:(NSString*) serviceClassName count:(NSUInteger)count
+{
+    Higgs *higgs = [Higgs higgsWithClassName:serviceClassName shared:NO];
+    higgs.count = MAX(1, count);
+    [self service:serviceName withHiggs:higgs];
+}
+
 
 -(void) service:(NSString*) serviceName withHiggs:(Higgs *)higgs
 {
@@ -151,8 +185,17 @@ typedef NS_ENUM(NSUInteger, HiggsType){
 }
 
 - (id)getService:(NSString *)serviceName {
+    id object = nil;
     Higgs *higgs = [self getServiceHiggs:serviceName];
-    return higgs ? [higgs resolve] : nil;
+    if(higgs != nil)
+    {
+        object = [higgs resolve];
+        if(higgs.count == 0)
+        {
+            [self removeHiggs:higgs];
+        }
+    }
+    return object;
 }
 
 -(Higgs *)getServiceHiggs:(NSString *)serviceName {
@@ -194,6 +237,29 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     }
     
     return higgs;
+}
+
+-(void) removeHiggs:(Higgs*) higgsToDelete
+{
+    __weak NSMutableDictionary* weakServices = services;
+    
+    dispatch_barrier_sync(servicesQueue, ^(){
+        __block NSString *serviceName = nil;
+        
+        [weakServices enumerateKeysAndObjectsUsingBlock:^(NSString *name, Higgs* higgs, BOOL *stop){
+            if([higgsToDelete isEqual:higgs])
+            {
+                higgsToDelete.si = nil;
+                serviceName = name;
+                *stop = YES;
+            }
+        }];
+        
+        if(serviceName != nil)
+        {
+            [weakServices removeObjectForKey:serviceName];
+        }
+    });
 }
 
 - (void)wire:(NSObject*)object
@@ -314,7 +380,6 @@ typedef NS_ENUM(NSUInteger, HiggsType){
 
 @end
 
-
 @implementation Higgs
 
 -(id) initWithType:(HiggsType) higgsType andDefinition:(id) higgsDefinition shared:(BOOL) higgsShared {
@@ -323,6 +388,7 @@ typedef NS_ENUM(NSUInteger, HiggsType){
 
     self = [self init];
     if(self) {
+        self.count = -1;
         setupToken = 0l;
         initSem = dispatch_semaphore_create(1);
         object = nil;
@@ -343,7 +409,14 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     NSAssert(self.si != nil, @"Higgs cannot exist without Silicon");
 
     dispatch_semaphore_wait(initSem, DISPATCH_TIME_FOREVER);
+    
+    // decrement
+    if(self.count > 0)
+    {
+        self.count -= 1;
+    }
 
+    // do resolve
     __weak typeof(self) weakSelf = self;
     __block id instance = nil;
     
@@ -354,7 +427,7 @@ typedef NS_ENUM(NSUInteger, HiggsType){
         }
     };
     
-    resolveBlock();
+    resolveBlock(); // or launch on queue (!)
     
     dispatch_semaphore_signal(initSem);
 
