@@ -45,6 +45,9 @@ extern NSString * const SI_COREDATA;
 -(void) service:(NSString*) serviceName withClass:(Class) serviceClass count:(NSUInteger)count;
 -(void) service:(NSString*) serviceName withClassName:(NSString*) serviceClassName count:(NSUInteger)count;
 
+// service removal
++(void) removeService:(NSString*) serviceName;
+-(void) removeService:(NSString*) serviceName;
 
 // access services
 +(id) getService:(NSString*) serviceName;

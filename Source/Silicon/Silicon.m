@@ -164,6 +164,20 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     });
 }
 
++(void) removeService:(NSString*) serviceName
+{
+    [[self si] removeService:serviceName];
+}
+
+-(void) removeService:(NSString*) serviceName
+{
+    Higgs *higgs = [self getServiceHiggs:serviceName];
+    if(higgs != nil)
+    {
+        [self removeHiggs:higgs];
+    }
+}
+
 +(id) service:(NSString*) serviceName {
     return [[self si] service:serviceName];
 }

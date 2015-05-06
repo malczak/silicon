@@ -7,6 +7,7 @@
 //
 
 #import "SIPGCoreData.h"
+#import "WRSQLiteCoreDataStack.h"
 
 @implementation SIPGCoreData
 
@@ -24,6 +25,11 @@
         [MLCoreDataStack setDefaultStack:_stack];
     }
     return self;
+}
+
+-(BOOL) seedingRequired
+{
+    return ((WRSQLiteCoreDataStack*)self.stack).seedingRequired;
 }
 
 - (NSManagedObjectContext *)managedObjectContext {

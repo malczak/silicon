@@ -7,6 +7,7 @@
 //
 
 #import "SICoreDataInterface.h"
+#import "WRVFUIButton.h"
 #import "MLActiveRecord.h"
 
 @interface SIPGCoreData : NSObject <SICoreDataInterface>
@@ -36,5 +37,7 @@
 @property (nonatomic, readonly, strong) NSManagedObjectContext * savingContext;
 
 -(id) initWithStack:(MLCoreDataStack*) stack;
+
+-(BOOL) seedingRequired;
 
 @end
