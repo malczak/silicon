@@ -7,7 +7,7 @@
 //
 
 #import "SIPGCoreData.h"
-//#import "WRSQLiteCoreDataStack.h"
+#import "WRSQLiteCoreDataStack.h"
 
 @implementation SIPGCoreData
 
@@ -29,7 +29,7 @@
 
 -(BOOL) seedingRequired
 {
-    return NO;//((WRSQLiteCoreDataStack*)self.stack).seedingRequired;
+   return ((WRSQLiteCoreDataStack*)self.stack).seedingRequired;
 }
 
 - (NSManagedObjectContext *)managedObjectContext {
