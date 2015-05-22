@@ -7,7 +7,6 @@
 //
 
 #import "SICoreDataInterface.h"
-#import "WRVFUIButton.h"
 #import "MLActiveRecord.h"
 
 @interface SIPGCoreData : NSObject <SICoreDataInterface>

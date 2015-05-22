@@ -11,6 +11,10 @@
 #import "SILogger.h"
 #import "SIPGCoreData.h"
 
+#define weakify(id,weak_id) __weak typeof(id) weak_id = id
+
+#define strongify(id,strong_id) __strong typeof(id) strong_id = id
+
 // todo move it
 extern NSString * const SI_SILICON;
 extern NSString * const SI_LOGGER;
@@ -31,19 +35,16 @@ extern NSString * const SI_COREDATA;
 -(void) service:(NSString*) serviceName withBlock:(NSObject*(^)(Silicon *)) serviceBlock;
 -(void) service:(NSString*) serviceName withObject:(id) serviceObject;
 -(void) service:(NSString*) serviceName withClass:(Class) serviceClass;
--(void) service:(NSString*) serviceName withClassName:(NSString*) serviceClassName;
 
 // define services
 -(void) service:(NSString*) serviceName withBlock:(NSObject*(^)(Silicon *)) serviceBlock shared:(BOOL)shared;
 -(void) service:(NSString*) serviceName withObject:(id) serviceObject shared:(BOOL)shared;
 -(void) service:(NSString*) serviceName withClass:(Class) serviceClass shared:(BOOL)shared;
--(void) service:(NSString*) serviceName withClassName:(NSString*) serviceClassName shared:(BOOL)shared;
 
 // define limited instance services
 -(void) service:(NSString*) serviceName withBlock:(NSObject*(^)(Silicon *)) serviceBlock count:(NSUInteger)count;
 -(void) service:(NSString*) serviceName withObject:(id) serviceObject count:(NSUInteger)count;
 -(void) service:(NSString*) serviceName withClass:(Class) serviceClass count:(NSUInteger)count;
--(void) service:(NSString*) serviceName withClassName:(NSString*) serviceClassName count:(NSUInteger)count;
 
 // service removal
 +(void) removeService:(NSString*) serviceName;
@@ -88,8 +89,6 @@ typedef NS_ENUM(NSUInteger, HiggsType);
 +(id) higgsWithObject:(NSObject*) object shared:(BOOL) shared;
 
 +(id) higgsWithClass:(Class) objectClass shared:(BOOL) shared;
-
-+(id) higgsWithClassName:(NSObject*) objectClassName shared:(BOOL) shared;
 
 +(id) higgsWithBlock:(NSObject*(^)(Silicon *si)) objectBlock shared:(BOOL) shared;
 
