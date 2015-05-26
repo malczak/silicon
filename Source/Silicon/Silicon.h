@@ -20,28 +20,24 @@ extern NSString * const SI_SILICON;
 extern NSString * const SI_LOGGER;
 extern NSString * const SI_COREDATA;
 
-@class Higgs;
 @class Silicon;
+@class Higgs;
+@class Task;
 
 @protocol SiliconInjectable
 @end;
 
-@interface Commands : NSObject
-
--(void) add:(void(^)(Silicon *)) commandBlock named:(NSString*) name;
-
--(void) remove:(NSString*) name;
-
--(void) execute:(NSString*) name;
-
--(void) execute:(NSString*) name completion:(void(^)()) completionBlock;
-
-@end
 
 @interface Silicon : NSObject
 
 +(instancetype) si;
 +(instancetype) sharedInstance;
+
+// simple tasks
+-(void) task:(NSString*) taskName withBlock:(void(^)(Task *t)) taskBlock count:(NSUInteger)count;
+-(void) removeTask:(NSString*) taskName;
+-(void) run:(NSString*) taskName completion:(void(^)()) completionBlock;
+-(void) run:(NSString*) taskName;
 
 // define shared services
 -(void) service:(NSString*) serviceName withBlock:(NSObject*(^)(Silicon *)) serviceBlock;
@@ -73,37 +69,46 @@ extern NSString * const SI_COREDATA;
 // wire object with silicon services
 -(void)wire:(NSObject*)object;
 
-@property (nonatomic, readonly) Commands *commands;
-
-// store all wired objects in weak table (default NO)
-@property (nonatomic, assign) BOOL trackAllWiredObjects;
-
-// force service resolving while performing object wiring (default NO)
-@property (nonatomic, assign) BOOL resolveServicesOnWire;
-
 @end
+
+
+@interface Task: NSObject
+
+-(void) exec:(void(^)(Task *t)) block;
+
+@end;
 
 
 typedef NS_ENUM(NSUInteger, HiggsType);
 
-@interface Higgs : NSObject {
-    dispatch_semaphore_t initSem;
-    dispatch_once_t setupToken;
+@interface Higgs : NSObject
+{
+    dispatch_semaphore_t initSema;
+
     HiggsType type;
+    
     BOOL shared;
+    
+    NSInteger count;
+    
     id definition;
     id object;
 }
 
 @property (nonatomic, weak) Silicon *si;
+
+@property (nonatomic, readonly) BOOL available;
+
+@property (nonatomic, readonly) BOOL resolved;
+
 @property (nonatomic, readonly) NSString *className;
 
 -(id) resolve;
 
-+(id) higgsWithObject:(NSObject*) object shared:(BOOL) shared;
++(id) higgsWithObject:(NSObject*) object shared:(BOOL) shared count:(NSInteger) count;
 
-+(id) higgsWithClass:(Class) objectClass shared:(BOOL) shared;
++(id) higgsWithClass:(Class) objectClass shared:(BOOL) shared count:(NSInteger) count;
 
-+(id) higgsWithBlock:(NSObject*(^)(Silicon *si)) objectBlock shared:(BOOL) shared;
++(id) higgsWithBlock:(NSObject*(^)(Silicon *si)) objectBlock shared:(BOOL) shared count:(NSInteger) count;
 
 @end
