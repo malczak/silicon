@@ -1,4 +1,4 @@
-//
+    //
 // Created by malczak on 01/04/14.
 // Copyright (c) 2014 segfaultsoft. All rights reserved.
 //
@@ -27,18 +27,108 @@ typedef NS_ENUM(NSUInteger, HiggsType){
 
 @end
 
-@interface Silicon (SiliconPrivate)
 
--(void)wire:(NSObject *)object withTracking:(BOOL)trackObject;
+@interface Commands ()
+{
+    dispatch_queue_t commandsAccessQueue;
+    dispatch_queue_t commandsQueue;
+}
+
+@property (nonatomic, strong) NSMutableDictionary *commands;
 
 @end
 
-@implementation Silicon {
+@implementation Commands
+
+-(instancetype)init
+{
+    self = [super init];
+    if(self)
+    {
+        commandsQueue = dispatch_queue_create("cat.thepirate.silicon.commands.execute", DISPATCH_QUEUE_SERIAL);
+        commandsAccessQueue = dispatch_queue_create("cat.thepirate.silicon.commands.access", DISPATCH_QUEUE_SERIAL);
+        self.commands = [NSMutableDictionary dictionary];
+    }
+    return self;
+}
+    
+-(void) add:(void(^)(Silicon *)) commandBlock named:(NSString*) name
+{
+    weakify(self, weakSelf);
+    dispatch_async(commandsAccessQueue, ^(){
+        [weakSelf.commands setObject:commandBlock forKey:name];
+    });
+}
+
+-(void) remove:(NSString*) name
+{
+    weakify(self, weakSelf);
+    dispatch_async(commandsAccessQueue, ^(){
+        [weakSelf.commands removeObjectForKey:name];
+    });
+}
+
+-(void) execute:(NSString*) name
+{
+    [self execute:name
+       completion:nil];
+}
+
+-(void) execute:(NSString*) name completion:(void(^)()) completionBlock
+{
+    weakify(self, weakSelf);
+    dispatch_async(commandsAccessQueue, ^(){
+        strongify(weakSelf, strongSelf);
+        if(strongSelf)
+        {
+            void(^commandBlock)(Silicon *si) = [strongSelf.commands objectForKey:name];
+            if(commandBlock)
+            {
+                [strongSelf remove:name];
+                [strongSelf executeCommand:commandBlock
+                                completion:completionBlock];
+            }
+        }
+    });
+}
+
+-(void) executeCommand:(void(^)(Silicon *)) commandBlock completion:(void(^)()) completionBlock
+{
+    dispatch_async(commandsQueue, ^(){
+        commandBlock([Silicon sharedInstance]);
+        if(completionBlock)
+        {
+            completionBlock();
+        }
+    });
+}
+
+-(void)dealloc
+{
+    [self.commands removeAllObjects];
+    commandsQueue = nil;
+    commandsAccessQueue = nil;
+}
+
+@end
+
+
+@interface Silicon()
+{
+    Commands *commands;
     NSHashTable *wiredObjects;
     dispatch_queue_t wiredObjectsQueue;
     dispatch_queue_t serviceAccessQueue;
     NSMutableDictionary *services;
 }
+
+-(void)wire:(NSObject *)object withTracking:(BOOL)trackObject;
+
+@end
+
+@implementation Silicon
+
+@synthesize commands = _commands;
 
 +(instancetype) si {
     return [self sharedInstance];
@@ -65,6 +155,14 @@ typedef NS_ENUM(NSUInteger, HiggsType){
         self.trackAllWiredObjects = NO;
     }
     return self;
+}
+-(Commands *)commands
+{
+    if(!_commands)
+    {
+        _commands = [[Commands alloc] init];
+    }
+    return _commands;
 }
 
 -(void) service:(NSString*) serviceName withBlock:(NSObject*(^)(Silicon *)) serviceBlock
@@ -127,7 +225,7 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     __weak typeof(self) weakSelf = self;
     __weak NSMutableDictionary* weakServices = services;
 
-    dispatch_barrier_sync(serviceAccessQueue, ^(){
+    dispatch_barrier_sync(serviceAccessQueue, ^(){ // todo cyclic barrier is not required on seriall queues
         serviceNameExists = ([weakServices objectForKey:serviceName] != nil);
     });
 
@@ -379,6 +477,8 @@ typedef NS_ENUM(NSUInteger, HiggsType){
 
 - (void)dealloc {
     [services removeAllObjects];
+    [wiredObjects removeAllObjects];
+    _commands = nil;
     services = nil;
 }
 

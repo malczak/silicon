@@ -26,6 +26,18 @@ extern NSString * const SI_COREDATA;
 @protocol SiliconInjectable
 @end;
 
+@interface Commands : NSObject
+
+-(void) add:(void(^)(Silicon *)) commandBlock named:(NSString*) name;
+
+-(void) remove:(NSString*) name;
+
+-(void) execute:(NSString*) name;
+
+-(void) execute:(NSString*) name completion:(void(^)()) completionBlock;
+
+@end
+
 @interface Silicon : NSObject
 
 +(instancetype) si;
@@ -60,6 +72,8 @@ extern NSString * const SI_COREDATA;
 
 // wire object with silicon services
 -(void)wire:(NSObject*)object;
+
+@property (nonatomic, readonly) Commands *commands;
 
 // store all wired objects in weak table (default NO)
 @property (nonatomic, assign) BOOL trackAllWiredObjects;
