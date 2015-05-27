@@ -127,6 +127,87 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     HIGGS_TYPE_BLOCK
 };
 
+@interface Job ()
+
+@property (nonatomic, weak) void(^completionBlock)(id result, NSError *error);
+
+-(void(^)()) runner;
+
+@end
+
+@implementation Job
+
+-(void(^)()) runner
+{
+    weakify(self, weakSelf);
+    return ^(){
+        strongify(weakSelf, strongSelf);
+        if(strongSelf)
+        {
+            [strongSelf run];
+        }
+    };
+}
+
+-(void)run
+{
+    [self complete:nil];
+}
+
+-(void) complete:(id) result
+{
+    self.completionBlock(result, nil);
+}
+
+-(void) failure:(NSError*) error
+{
+    self.completionBlock(nil, error);
+}
+
+-(void)dealloc
+{
+    self.completionBlock = nil;
+}
+
+@end
+
+
+@interface BlockJob ()
+{
+    void (^jobBlock)(Job*);
+}
+
+@end
+
+@implementation BlockJob
+
++(instancetype) blockJob:(void(^)(Job*)) block
+{
+    return [[self alloc] initWithBlock:block];
+}
+
+-(instancetype) initWithBlock:(void(^)(Job*)) block;
+{
+    self = [super init];
+    if(self)
+    {
+        jobBlock = block;
+    }
+    return self;
+}
+
+-(void)run
+{
+    jobBlock(self);
+}
+
+-(void)dealloc
+{
+    jobBlock = nil;
+}
+
+@end
+
 
 @interface Task ()
 
@@ -134,13 +215,15 @@ typedef NS_ENUM(NSUInteger, HiggsType){
 
 @property (nonatomic, assign) dispatch_queue_t taskQueue;
 
-@property (nonatomic, strong) NSString *name;
-
 @property (nonatomic, assign) NSInteger count;
 
-@property (nonatomic, assign) BOOL running;
+@property (nonatomic, strong) Job *currentJob;
 
-@property (nonatomic, copy) void (^taskBlock)(Task *);
+@property (nonatomic, strong) NSMutableArray *jobs;
+
+@property (nonatomic, strong) NSString *name;
+
+@property (nonatomic, copy) void(^jobCompletionBlock)(id, NSError*);
 
 -(void) run:(void(^)()) completionBlock;
 
@@ -148,69 +231,106 @@ typedef NS_ENUM(NSUInteger, HiggsType){
 
 @implementation Task
 
--(void) exec:(void(^)(Task *t)) block
+-(instancetype)init
 {
-    if(!self.running)
+    self = [super init];
+    if(self)
     {
-        return;
+        self.jobs = [NSMutableArray array];
+        self.taskQueue = nil;
+        self.taskGroup = nil;
+        
+        weakify(self, weakSelf);
+        self.jobCompletionBlock = ^(id result, NSError *error) {
+            strongify(weakSelf, strongSelf);
+            if(strongSelf)
+            {
+                [strongSelf jobCompleted:result error:error];
+            }
+        };
+
     }
+    return self;
+}
+
+-(void) exec:(JobProducer) block
+{
     
-    if(block != nil)
-    {
-        dispatch_group_async(self.taskGroup, self.taskQueue, [self selfWrappedBlock:block]);
-    }
+}
+
+-(BOOL) running
+{
+    return self.taskGroup != nil;//( 0L != dispatch_group_wait(self.taskGroup, DISPATCH_TIME_NOW) );
 }
 
 -(void) run:(void(^)()) completionBlock
 {
-    if(self.running)
-    {
-        return;
-    }
-    
-    self.running = YES;
-    
-    NSString *queueName = [NSString stringWithFormat:@"cat.thepirate.silicon.task.%@", self.name];
-    self.taskQueue = dispatch_queue_create([queueName UTF8String], DISPATCH_QUEUE_SERIAL);
-    self.taskGroup = dispatch_group_create();
-    
-    dispatch_group_enter(self.taskGroup);
-    
-    weakify(self, weakSelf);
-    dispatch_group_notify(self.taskGroup, self.taskQueue, ^(){
-        if(completionBlock)
-        {
-            completionBlock();
-        }
+    if(![self running])
+    {        
+        NSString *queueName = [NSString stringWithFormat:@"cat.thepirate.silicon.task.%@-%tu", self.name, self.count];
+        self.taskQueue = dispatch_queue_create([queueName UTF8String], DISPATCH_QUEUE_SERIAL);
+        self.taskGroup = dispatch_group_create();
         
-        strongify(weakSelf, strongSelf);
-        if(strongSelf)
-        {
-            [strongSelf completed];
-        }
-    });
-    
-    [self exec:self.taskBlock];
-    
-    dispatch_group_leave(self.taskGroup);
-    
-    self.count = MAX(-1, self.count);
+        dispatch_group_enter(self.taskGroup);
+        
+        weakify(self, weakSelf);
+        dispatch_group_notify(self.taskGroup, self.taskQueue, ^(){
+            if(completionBlock)
+            {
+                completionBlock();
+            }
+            
+            strongify(weakSelf, strongSelf);
+            if(strongSelf)
+            {
+                [strongSelf completed];
+            }
+        });
+        
+        [self runNextJob];
+        
+        dispatch_group_leave(self.taskGroup);
+        
+        self.count = MAX(-1, self.count);
+    }
 }
 
--(void(^)()) selfWrappedBlock:(void(^)(Task *)) block
+-(void) runNextJob
 {
-    weakify(self, weakSelf);
-    return ^() {
-        strongify(weakSelf, strongSelf);
-        if(strongSelf)
-        {
-            block(strongSelf);
+    Job *job = nil;
+    
+    while(!job && [self.jobs count])
+    {
+        @autoreleasepool {
+            Job* (^jobProducer)(Task*) = [self.jobs firstObject];
+            [self.jobs removeObject:jobProducer];
+            job = jobProducer(self);
         }
-    };
+    }
+    
+    if(job)
+    {
+        self.currentJob = job;
+        self.currentJob.completionBlock = self.jobCompletionBlock;
+        dispatch_group_enter(self.taskGroup);
+        dispatch_async(self.taskQueue, [self.currentJob runner]);
+    }
+}
+
+-(void) jobCompleted:(id) result error:(NSError*) error
+{
+    Job *job = self.currentJob;
+    self.currentJob = nil;
+    
+    [self runNextJob];
+
+    job.completionBlock = nil;
+    dispatch_group_leave(self.taskGroup);
 }
 
 -(void) completed
 {
+    dispatch_release(self.taskGroup);
     self.taskGroup = nil;
     self.taskQueue = nil;
 }
@@ -218,7 +338,10 @@ typedef NS_ENUM(NSUInteger, HiggsType){
 -(void)dealloc
 {
     NSLog(@"Task down...");
-    [self completed];
+    if([self running])
+    {
+        [self completed];
+    }
 }
 
 @end
@@ -259,14 +382,24 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     return self;
 }
 
--(void) task:(NSString*) taskName withBlock:(void(^)(Task *t)) taskBlock count:(NSUInteger)count
+-(void) task:(NSString*) taskName withBlock:(JobProducer) jobProducer
 {
-    Task *task = [[Task alloc] init];
-    task.taskBlock = taskBlock;
-    task.name = taskName;
-    task.count = MAX(-1, count);
+    [self task:taskName withBlock:jobProducer count:-1];
+}
 
-    [tasks setItem:task forKey:taskName];
+-(void) task:(NSString*) taskName withBlock:(JobProducer) jobProducer count:(NSUInteger)count
+{
+    Task *task = (Task*)[tasks itemForKey:taskName];
+    
+    if(!task)
+    {
+        task = [[Task alloc] init];
+        task.name = taskName;
+        task.count = MAX(-1, count);
+        [tasks setItem:task forKey:taskName];
+    }
+    
+    [task.jobs addObject:[jobProducer copy]]; // @todo ake thread-safe
 }
 
 -(void) removeTask:(NSString*) taskName
@@ -648,6 +781,5 @@ typedef NS_ENUM(NSUInteger, HiggsType){
     object = nil;
     definition = nil;
 }
-
 
 @end
