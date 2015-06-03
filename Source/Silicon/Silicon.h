@@ -22,57 +22,14 @@ extern NSString * const SI_COREDATA;
 
 @class Silicon;
 @class Higgs;
-@class Task;
 
 @protocol SiliconInjectable
 @end;
-
-
-
-@interface Job : NSObject
-
--(void) complete:(id) result;
-
--(void) failure:(NSError*) error;
-
--(void) run;
-
-@end
-
-@interface BlockJob : Job
-
-+(instancetype) blockJob:(void(^)(Job*)) block;
-
--(instancetype) initWithBlock:(void(^)(Job*)) block;
-
-@end
-
-
-
-typedef Job* (^JobProducer)(Task*);
-
-@interface Task: NSObject
-
--(void) exec:(JobProducer) block;
-
-@end;
-
-
-#define JobWithClass(jobClass) ^Job*(Task* task) { return [[[jobClass class] alloc] init]; }
-#define JobWithBlock(jobBlock) ^Job*(Task* task) { return [BlockJob blockJob:jobBlock]; }
-
 
 @interface Silicon : NSObject
 
 +(instancetype) si;
 +(instancetype) sharedInstance;
-
-// simple tasks
--(void) task:(NSString*) taskName withBlock:(JobProducer) jobProducer;
--(void) task:(NSString*) taskName withBlock:(JobProducer) jobProducer count:(NSUInteger)count;
--(void) removeTask:(NSString*) taskName;
--(void) run:(NSString*) taskName completion:(void(^)()) completionBlock;
--(void) run:(NSString*) taskName;
 
 // define shared services
 -(void) service:(NSString*) serviceName withBlock:(NSObject*(^)(Silicon *)) serviceBlock;
