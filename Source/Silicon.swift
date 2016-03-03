@@ -131,7 +131,7 @@ public class Silicon {
     }
     public static let sharedInstance = Silicon()
 
-    public var errorBlock: ((Silicon.Error) -> Void)? = nil
+    public var errorBlock: ((Silicon.Error) -> Void )? = nil
 
     var services: [String:Higgs] = [String:Higgs]()
     
@@ -145,28 +145,36 @@ public class Silicon {
     
     
     // MARK: Static versions
+
+    class public func setShared(name: String, closure: (si:Silicon) -> Any?)  {
+        Silicon.set(name, shared: true, closure: closure);
+    }
     
-    class public func set(name: String, closure: (si:Silicon) -> Any?) -> Void {
+    class public func set(name: String, closure: (si:Silicon) -> Any?)  {
         Silicon.set(name, shared: false, closure: closure);
     }
     
-    class public func set(name: String, shared: Bool, closure: (si:Silicon) -> Any?) -> Void {
+    class public func set(name: String, shared: Bool, closure: (si:Silicon) -> Any?)  {
         Silicon.set(name, shared: shared, count: Higgs.INF, closure: closure)
     }
     
-    class public func set(name: String, shared: Bool, count: Int, closure: (si:Silicon) -> Any?) -> Void {
+    class public func set(name: String, shared: Bool, count: Int, closure: (si:Silicon) -> Any?)  {
         Silicon.sharedInstance.set(name, shared: shared, count: count, closure: closure)
     }
     
-    class public func set(name: String, instance: Any) -> Void {
+    class public func set(name: String, instance: Any)  {
         Silicon.set(name, shared: false, instance: instance);
     }
     
-    class public func set(name: String, shared: Bool, instance: Any) -> Void {
+    class public func setShared(name: String, instance: Any)  {
+        Silicon.set(name, shared: true, instance: instance);
+    }
+    
+    class public func set(name: String, shared: Bool, instance: Any)  {
         Silicon.set(name, shared: shared, count: Higgs.INF, instance: instance)
     }
     
-    class public func set(name: String, shared: Bool, count: Int, instance: Any) -> Void {
+    class public func set(name: String, shared: Bool, count: Int, instance: Any)  {
         Silicon.sharedInstance.set(name, shared: shared, count: count, instance: instance)
     }
     
@@ -182,29 +190,37 @@ public class Silicon {
 
     // MARK: Instance Create block definition based higgs
     
-    public func set(name: String, closure:(si: Silicon) -> Any?) -> Void {
-        self.set(name, shared: false, closure: closure);
+    public func setShared(name: String, closure:(si: Silicon) -> Any?)  {
+        self.set(name, shared: true, closure:  closure)
     }
     
-    public func set(name: String, shared: Bool, closure: (si:Silicon) -> Any?) -> Void {
+    public func set(name: String, closure:(si: Silicon) -> Any?)  {
+        self.set(name, shared: false, closure: closure)
+    }
+    
+    public func set(name: String, shared: Bool, closure: (si:Silicon) -> Any?)  {
         self.set(name, shared: shared, count: Higgs.INF, closure: closure)
     }
     
-    public func set(name: String, shared: Bool, count: Int, closure: (si:Silicon) -> Any?) -> Void {
+    public func set(name: String, shared: Bool, count: Int, closure: (si:Silicon) -> Any?)  {
         self.add(Higgs: Higgs(name: name, shared: shared, count: count, closure: closure))
     }
     
     // MARK: Create instance based higgs
     
-    public func set(name: String, instance: Any) -> Void {
+    public func setShared(name: String, instance: Any)  {
+        self.set(name, shared: true, instance: instance)
+    }
+    
+    public func set(name: String, instance: Any)  {
         self.set(name, shared: false, instance: instance);
     }
     
-    public func set(name: String, shared: Bool, instance: Any) -> Void {
+    public func set(name: String, shared: Bool, instance: Any)  {
         self.set(name, shared: shared, count: Higgs.INF, instance: instance)
     }
     
-    public func set(name: String, shared: Bool, count: Int, instance: Any) -> Void {
+    public func set(name: String, shared: Bool, count: Int, instance: Any)  {
         self.add(Higgs: Higgs(name: name, shared: shared, count: count, instance: instance))
     }
 

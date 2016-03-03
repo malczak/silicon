@@ -11,16 +11,17 @@ import Silicon
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
+    
+    var window: UIWindow?
 
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
         Bootstrap.setup()
         
-        if let log = Silicon.get("log") as? ((String) -> Void) {
-            log("Super")
-        }
+        self.log("On Boostrap done")
         
         return true
     }
 
 }
+
 
