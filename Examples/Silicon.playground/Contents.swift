@@ -5,12 +5,15 @@ import UIKit
 
 srand(0)
 
-protocol TestProto {
-  func name() -> String;
-}
+enum Services: String, Silicon.Services {
+  
+  case OBJ_1 = "obj1"
+  
+  case OBJ_2 = "obj2"
+  
+  case OBJ_3 = "obj3"
 
-enum Services: String, TestProto {
-  case Super = "Super";
+  case OBJ_4 = "obj4"
   
   func name() -> String {
     return rawValue;
@@ -41,28 +44,28 @@ Silicon.sharedInstance.errorBlock = { error in
 
 
 var s = Silicon.sharedInstance
-s.set("Obj1", closure: { (si) in
+s.set(Services.OBJ_1, closure: { (si) in
     print("fetch 1")
     let o = Obj1()
-    o.a = (si.resolve("Obj2")) as? Obj2
+    o.a = (si.resolve(Services.OBJ_2)) as? Obj2
     return o
 })
 
-s.set("Obj2", closure: { (si) in
+s.set(Services.OBJ_2, closure: { (si) in
     print("fetch 2")
     let o = Obj2()
-    o.b = (si.resolve("Obj3")) as? Obj3
+    o.b = (si.resolve(Services.OBJ_3)) as? Obj3
     return o
 });
 
-s.set("Obj3", closure: { (si) in
+s.set(Services.OBJ_3) { (si) in
     print("fetch 3")
     let o = Obj3()
-    o.c =  (si.resolve("Obj1")) as? Obj1
+    o.c =  (si.resolve(Services.OBJ_1)) as? Obj1
     return o
-});
+};
 
-Silicon.set("Obj4", shared:true, count: 2) { (si) in
+Silicon.set(Services.OBJ_4, shared:true, count: 2) { (si) in
     print("fetch 2")
     let o = Obj3()
     o.i = Int(rand())
@@ -70,19 +73,30 @@ Silicon.set("Obj4", shared:true, count: 2) { (si) in
 };
 
 let o = [
-    s.get("Obj1"),
-    s.get("Obj4"),
-    s.get("Obj4"),
-    s.get("Obj4"),
+    s.get(Services.OBJ_1),
+    s.get(Services.OBJ_2),
+    s.get(Services.OBJ_3),
+    s.get(Services.OBJ_4),
     s.get("services")
 ]
 
-print("Done .... ")
-for itm in o {
-    print("\t \(itm) ~ \((itm != nil) ? Unmanaged<Obj>.passUnretained(itm as! Obj).toOpaque() : nil)")
+func ptr(itm:Any?) -> COpaquePointer {
+  if let obj = itm as? AnyObject {
+    return Unmanaged<AnyObject>.passUnretained(obj).toOpaque()
+  }
+  return nil
 }
 
+print("Done .... ")
+for itm in o {
+    print("\t \(itm) ~ \(ptr(itm))")
+}
 
+print("Last service? \(Services.OBJ_4.name()) : \(ptr(s.get(Services.OBJ_4)))")
+print("Last service? \(Services.OBJ_4.name()) : \(ptr(s.get(Services.OBJ_4)))")
+print("Last service? \(Services.OBJ_4.name()) : \(ptr(s.get(Services.OBJ_4)))")
+
+/*
 class PriorityQueue<T> {
     
 }
@@ -119,3 +133,4 @@ class EventDispatcher {
     }
     
 }
+ */
