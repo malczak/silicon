@@ -5,6 +5,18 @@ import UIKit
 
 srand(0)
 
+protocol TestProto {
+  func name() -> String;
+}
+
+enum Services: String, TestProto {
+  case Super = "Super";
+  
+  func name() -> String {
+    return rawValue;
+  }
+}
+
 class Obj {
     
 }
@@ -20,7 +32,6 @@ class Obj2: Obj {
 class Obj3: Obj {
     var i: Int = 1
     var c: Obj1?
-
 }
 
 
@@ -72,4 +83,39 @@ for itm in o {
 }
 
 
+class PriorityQueue<T> {
+    
+}
 
+
+class Event {
+    
+}
+
+class EventDispatcher {
+    
+    class Listener {
+        var type: String;
+        
+        unowned var handler: (Event) -> Void
+        
+        init(type: String, handler: (Event) -> Void) {
+            self.type = type;
+            self.handler = handler;
+        }
+
+    }
+    
+    private var _dispatch_queue = dispatch_queue_create("cat.thepirate.", DISPATCH_QUEUE_SERIAL);
+    
+    private var _listeners = [String:Listener]
+    
+    func dispatch(event: Event, async: Bool) {
+        
+    }
+    
+    func dispatch(event: Event) {
+        self.dispatch(event, async: false)
+    }
+    
+}

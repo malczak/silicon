@@ -10,61 +10,61 @@ import Foundation
 import Silicon
 
 class Holder {
-    var value:Int
-    init(widthValue value:Int) {
-        self.value = value
-    }
-    deinit {
-        print("Removed Holder")
-    }
+  var value:Int
+  init(widthValue value:Int) {
+    self.value = value
+  }
+  deinit {
+    print("Removed Holder")
+  }
 }
 
 class Text {
-    let value = "SUPER"
-    deinit {
-        print("KILLED")
-    }
+  let value = "SUPER"
+  deinit {
+    print("KILLED")
+  }
 }
 
 class Bootstrap {
+  
+  class func setup() {
+    let silicon = Silicon.sharedInstance;
+    let t = Text()
     
-    class func setup() {
-        let silicon = Silicon.sharedInstance;
-        let t = Text()
-        
-        silicon.setShared("console") { si in
-            let consoleBlock = { (info: String) in
-                NSLog(info)
-            }
-            return consoleBlock
-        }
-        
-        let h = Holder(widthValue: 5)
-        silicon.set("number", shared: true, count: 4, instance: h);
-        
-        silicon.setShared("log") { [t] si in
-            NSLog(t.value)
-            let console = si.resolve("console") as? ((String) -> Void)
-            var cnt = 0
-            while let i = si.resolve("number") as? Holder {
-                console?("Index \(cnt) value \(i.value)")
-                i.value -= 2;
-                cnt += 1
-            }
-            return console
-        }
-        
+    silicon.set(Services.CONSOLE) { si in
+      let consoleBlock = { (info: String) in
+        NSLog(info)
+      }
+      return consoleBlock
     }
     
+    let h = Holder(widthValue: 5)
+    silicon.set(Services.NUMBER, shared: true, count: 4, instance: h);
+    
+    silicon.set(Services.LOG) { [t] si in
+      NSLog(t.value)
+      let console = si.get(Services.CONSOLE) as? ((String) -> Void)
+      var cnt = 0
+      while let i = si.get(Services.NUMBER) as? Holder {
+        console?("Index \(cnt) value \(i.value)")
+        i.value -= 2;
+        cnt += 1
+      }
+      return console
+    }
+    
+  }
+  
 }
 
 extension NSObject {
-
-    public func log(text: String)
-    {
-        if let log = Silicon.get("log") as? ((String) -> Void) {
-            log(text)
-        }
+  
+  public func log(text: String)
+  {
+    if let log = Silicon.get(Services.LOG) as? ((String) -> Void) {
+      log(text)
     }
-    
+  }
+  
 }

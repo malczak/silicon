@@ -4,6 +4,10 @@ public protocol SiInjectable {
     
 }
 
+public protocol SiService {
+  func name() -> String
+}
+
 public class Silicon {
     
     public enum Error: ErrorType {
@@ -260,8 +264,7 @@ public class Silicon {
         return object
     }
     
-    private func resolve(Higgs higgs: Higgs, onContext context: Context) -> Any?
-    {
+    private func resolve(Higgs higgs: Higgs, onContext context: Context) -> Any? {
         var instance = higgs.instance
         
         if instance == nil {
@@ -349,4 +352,74 @@ public class Silicon {
             #endif
         }
     }
+}
+
+// MARK: Service management using SiService protocol
+
+extension Silicon {
+  
+  class public func get(service: SiService) -> Any? {
+    return Silicon.sharedInstance.get(service)
+  }
+  
+  class public func resolve(service: SiService) -> Any? {
+    return Silicon.sharedInstance.resolve(service)
+  }
+
+  class public func set(service: SiService, closure: (si:Silicon) -> Any?) -> Void {
+    Silicon.set(service, shared: false, closure: closure);
+  }
+  
+  class public func set(service: SiService, shared: Bool, closure: (si:Silicon) -> Any?) -> Void {
+    Silicon.set(service, shared: shared, count: Higgs.INF, closure: closure)
+  }
+  
+  class public func set(service: SiService, shared: Bool, count: Int, closure: (si:Silicon) -> Any?) -> Void {
+    Silicon.sharedInstance.set(service, shared: shared, count: count, closure: closure)
+  }
+  
+  class public func set(service: SiService, instance: Any) -> Void {
+    Silicon.set(service, shared: false, instance: instance);
+  }
+  
+  class public func set(service: SiService, shared: Bool, instance: Any) -> Void {
+    Silicon.set(service, shared: shared, count: Higgs.INF, instance: instance)
+  }
+  
+  class public func set(service: SiService, shared: Bool, count: Int, instance: Any) -> Void {
+    Silicon.set(service.name(), shared: shared, count: count, instance: instance)
+  }
+  
+  public func set(service: SiService, closure:(si: Silicon) -> Any?) -> Void {
+    self.set(service, shared: false, closure: closure);
+  }
+  
+  public func set(service: SiService, shared: Bool, closure: (si:Silicon) -> Any?) -> Void {
+    self.set(service, shared: shared, count: Higgs.INF, closure: closure)
+  }
+  
+  public func set(service: SiService, shared: Bool, count: Int, closure: (si:Silicon) -> Any?) -> Void {
+    self.set(service.name(), shared:  shared, count:  count, closure: closure);
+  }
+  
+  public func set(service: SiService, instance: Any) -> Void {
+    self.set(service, shared: false, instance: instance);
+  }
+  
+  public func set(service: SiService, shared: Bool, instance: Any) -> Void {
+    self.set(service, shared: shared, count: Higgs.INF, instance: instance)
+  }
+  
+  public func set(service: SiService, shared: Bool, count: Int, instance: Any) -> Void {
+    self.set(service.name(), shared: shared, count: count, instance: instance);
+  }
+  
+  public func get(service: SiService) -> Any? {
+    return get(service.name())
+  }
+  
+  public func resolve(service: SiService) -> Any? {
+    return resolve(service.name())
+  }
+
 }
