@@ -360,14 +360,6 @@ public class Silicon {
 
 extension Silicon {
   
-  class public func get(service: SiService) -> Any? {
-    return Silicon.sharedInstance.get(service)
-  }
-  
-  class public func resolve(service: SiService) -> Any? {
-    return Silicon.sharedInstance.resolve(service)
-  }
-  
   class public func set(service: SiService, closure: (si:Silicon) -> Any?) -> Void {
     Silicon.set(service, shared: false, closure: closure);
   }
@@ -377,7 +369,7 @@ extension Silicon {
   }
   
   class public func set(service: SiService, shared: Bool, count: Int, closure: (si:Silicon) -> Any?) -> Void {
-    Silicon.sharedInstance.set(service, shared: shared, count: count, closure: closure)
+    Silicon.set(service.name(), shared: shared, count: count, closure: closure)
   }
   
   class public func set(service: SiService, instance: Any) -> Void {
@@ -416,6 +408,14 @@ extension Silicon {
     self.set(service.name(), shared: shared, count: count, instance: instance);
   }
   
+  class public func get(service: SiService) -> Any? {
+    return Silicon.sharedInstance.get(service)
+  }
+  
+  class public func resolve(service: SiService) -> Any? {
+    return Silicon.sharedInstance.resolve(service)
+  }
+
   public func get(service: SiService) -> Any? {
     return get(service.name())
   }
