@@ -1,4 +1,4 @@
-    //
+//
 // Created by malczak on 01/04/14.
 // Copyright (c) 2014 segfaultsoft. All rights reserved.
 //
@@ -16,7 +16,7 @@ NSString * const SI_COREDATA = @"CoreData";
 
 @interface SIHashMap : NSObject
 
-@property (nonatomic, assign) dispatch_queue_t accessQueue;
+@property (nonatomic, strong) dispatch_queue_t accessQueue;
 
 @property (nonatomic, strong) NSMutableDictionary *map;
 

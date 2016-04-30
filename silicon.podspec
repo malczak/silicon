@@ -9,6 +9,8 @@ Pod::Spec.new do |s|
   s.author       = { "Matt" => "mateusz@malczak.info" }
   s.platform     = :ios
  
+  s.ios.deployment_target = '7.0'
+
   s.source       = { :git => "https://github.com/malczak/silicon.git", :commit => "29600ac6f91244dc868f1194961236c1ceb2c920" }
 
   s.source_files  = "Source/**/*.{h,m}"
