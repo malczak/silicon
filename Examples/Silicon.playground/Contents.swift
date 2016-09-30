@@ -3,8 +3,6 @@
 import Foundation
 import UIKit
 
-srand(0)
-
 enum Services: String, Silicon.Services {
   
   case OBJ_1 = "obj1"
@@ -68,7 +66,7 @@ s.set(Services.OBJ_3) { (si) in
 Silicon.set(Services.OBJ_4, shared:true, count: 2) { (si) in
     print("fetch 2")
     let o = Obj3()
-    o.i = Int(rand())
+    o.i = Int(arc4random())
     return o
 };
 
@@ -80,11 +78,8 @@ let o = [
     s.get("services")
 ]
 
-func ptr(itm:Any?) -> COpaquePointer {
-  if let obj = itm as? AnyObject {
-    return Unmanaged<AnyObject>.passUnretained(obj).toOpaque()
-  }
-  return nil
+func ptr(_ itm:Any?) -> UnsafeMutableRawPointer? {
+    return Unmanaged<AnyObject>.passUnretained(itm as AnyObject).toOpaque()
 }
 
 print("Done .... ")

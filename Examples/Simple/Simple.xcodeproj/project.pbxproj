@@ -129,6 +129,8 @@
 				TargetAttributes = {
 					3226C5B21C87071700DEA661 = {
 						CreatedOnToolsVersion = 7.2.1;
+						DevelopmentTeam = F7H9NZFKGE;
+						LastSwiftMigration = 0800;
 					};
 				};
 			};
@@ -331,10 +333,12 @@
 			baseConfigurationReference = 84A6310A3D013814B466575C /* Pods-Simple.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				DEVELOPMENT_TEAM = F7H9NZFKGE;
 				INFOPLIST_FILE = Simple/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = cat.thepirate.silicon.Simple;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 3.0;
 			};
 			name = Debug;
 		};
@@ -343,10 +347,12 @@
 			baseConfigurationReference = 60501B108F5A4FFCE4F72E62 /* Pods-Simple.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				DEVELOPMENT_TEAM = F7H9NZFKGE;
 				INFOPLIST_FILE = Simple/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = cat.thepirate.silicon.Simple;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 3.0;
 			};
 			name = Release;
 		};
