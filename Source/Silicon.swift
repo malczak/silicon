@@ -289,6 +289,7 @@ open class Silicon {
         }
         
         // new resolver
+        // MARK: non thread safe - shouldnt be run once per service ?
         let ctx = Context(withHiggs: higgs)
         
         ctx.group.enter()
@@ -347,6 +348,7 @@ open class Silicon {
     }
     
     fileprivate func update(Higgs higgs: Higgs) {
+        // MARK: non thread safe
         if higgs.count > 0 {
             higgs.count -= 1
         }
