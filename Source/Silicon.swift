@@ -51,9 +51,13 @@ open class Silicon {
         case serviceNotFound(service: String)
         
         case missingInstance(service: String)
+        
+        case failedToCreateContext(service: String)
+        
+        case contextResolveError
     }
     
-    class Context {
+    internal class Context {
         static let ContextKey = DispatchSpecificKey<UnsafeMutableRawPointer?>()
         
         weak var higgs:Higgs?
@@ -86,14 +90,14 @@ open class Silicon {
             resolveTrace.insert(name);
         }
         
-        func wait() {
-            group.wait(timeout: DispatchTime.distantFuture)
+        func dispose() {
+            higgs = nil
             queue.setSpecific(key: uid, value: nil);
             resolveTrace.removeAll()
         }
         
         deinit {
-            print("\t\t\t\t>>>> CONTEXT DEINIT")
+            syncedPrint("\t\t\t\t>>>> CONTEXT DEINIT")
         }
         
         class func queueName() -> String {
@@ -101,33 +105,57 @@ open class Silicon {
         }
     }
     
-    class Higgs {
+    internal class Higgs: Hashable {
         
         class Definition {
-            fileprivate var instance: Any? = nil
             
-            fileprivate var closure: (_ si: Silicon) -> Any?
+            var closure: (_ si: Silicon) -> Any?
             
-            fileprivate var sema = DispatchSemaphore(value: 1)
-            
-            
-            init(_ closure: @escaping (_ si: Silicon) -> Any? ) {
+            init(closure: @escaping (_ si: Silicon) -> Any? ) {
                 self.closure = closure
             }
             
             func get(_ si: Silicon) -> Any? {
+                return closure(si)
+            }
+            
+            deinit {
+                syncedPrint("\t\t\t\t>>>> DEFINITION DEINIT")
+            }
+        }
+        
+        class SingletonDefinition: Definition {
+
+            weak var higgs: Higgs?
+
+            var instance: Any? = nil
+
+            var sema = DispatchSemaphore(value: 1)
+
+            init(withHiggs higgs:Higgs, closure: @escaping (_ si: Silicon) -> Any? ) {
+                self.higgs = higgs
+                super.init(closure: closure)
+            }
+            
+            override func get(_ si: Silicon) -> Any? {
                 sema.wait(timeout: DispatchTime.distantFuture)
                 if instance == nil {
                     instance = closure(si)
+                    if let higgs = higgs {
+                        higgs.instance = instance
+                        higgs.definition = nil
+                    }
+                    higgs = nil
                 }
                 sema.signal()
                 return instance
             }
             
             deinit {
-                print("\t\t\t\t>>>> DEFINITION DEINIT")
+                instance = nil
+                higgs = nil
             }
-            
+
         }
         
         
@@ -147,6 +175,10 @@ open class Silicon {
             return instance != nil
         }
         
+        var hashValue: Int {
+            return name.hash
+        }
+        
         init (name: String, shared: Bool, count: Int) {
             self.name = name
             self.shared = shared
@@ -155,7 +187,7 @@ open class Silicon {
         
         convenience init(name: String, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) {
             self.init(name: name, shared: shared, count: count)
-            self.definition = Definition(closure)
+            self.definition = shared ? Definition(closure: closure) : SingletonDefinition(withHiggs: self, closure: closure)
         }
         
         convenience init(name: String, shared: Bool, count: Int, instance: Any) {
@@ -166,7 +198,11 @@ open class Silicon {
         deinit {
             definition = nil
             instance = nil
-            print("\t\t\t\t\t>>>> HIGGS DEINIT")
+            syncedPrint("\t\t\t\t\t>>>> HIGGS DEINIT")
+        }
+        
+        static func == (lhs: Higgs, rhs: Higgs) -> Bool {
+            return lhs.name == rhs.name
         }
         
     }
@@ -175,110 +211,51 @@ open class Silicon {
     
     open var errorBlock: ((Silicon.ResolveError) -> Void)? = nil
     
-    var services: [String:Higgs] = [String:Higgs]()
+    private var services = [String:Higgs]()
     
-    let servicesQueue: DispatchQueue = DispatchQueue(label: "cat.thepirate.silicon.services", attributes: [])
+    private var contexts = [Higgs:Context]()
     
-    let errorsQueue: DispatchQueue = DispatchQueue(label: "cat.thepirate.silicon.errors", attributes: [])
+    private let contextsQueue: DispatchQueue = DispatchQueue(label: "cat.thepirate.silicon.contexts", attributes: [])
     
-    fileprivate init() {
-        services = [String:Higgs]()
-    }
+    private let servicesQueue: DispatchQueue = DispatchQueue(label: "cat.thepirate.silicon.services", attributes: [])
     
+    private let errorsQueue: DispatchQueue = DispatchQueue(label: "cat.thepirate.silicon.errors", attributes: [])
     
-    // MARK: Static versions
-    
-    class open func set(_ name: String, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        Silicon.set(name, shared: false, closure: closure);
-    }
-    
-    class open func set(_ name: String, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        Silicon.set(name, shared: shared, count: Higgs.INF, closure: closure)
-    }
-    
-    class open func set(_ name: String, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        Silicon.sharedInstance.set(name, shared: shared, count: count, closure: closure)
-    }
-    
-    class open func set(_ name: String, instance: Any) -> Void {
-        Silicon.set(name, shared: false, instance: instance);
-    }
-    
-    class open func set(_ name: String, shared: Bool, instance: Any) -> Void {
-        Silicon.set(name, shared: shared, count: Higgs.INF, instance: instance)
-    }
-    
-    class open func set(_ name: String, shared: Bool, count: Int, instance: Any) -> Void {
-        Silicon.sharedInstance.set(name, shared: shared, count: count, instance: instance)
-    }
-    
-    // MARK: resolve higgs object
-    
-    class open func get(_ name: String) -> Any? {
-        return Silicon.sharedInstance.get(name)
-    }
-    
-    class open func resolve(_ name: String) -> Any? {
-        return Silicon.sharedInstance.resolve(name)
-    }
-    
-    // MARK: Instance Create block definition based higgs
-    
-    open func set(_ name: String, closure:@escaping (_ si: Silicon) -> Any?) -> Void {
-        self.set(name, shared: false, closure: closure);
-    }
-    
-    open func set(_ name: String, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        self.set(name, shared: shared, count: Higgs.INF, closure: closure)
-    }
-    
-    open func set(_ name: String, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        self.add(Higgs: Higgs(name: name, shared: shared, count: count, closure: closure))
-    }
-    
-    // MARK: Create instance based higgs
-    
-    open func set(_ name: String, instance: Any) -> Void {
-        self.set(name, shared: false, instance: instance);
-    }
-    
-    open func set(_ name: String, shared: Bool, instance: Any) -> Void {
-        self.set(name, shared: shared, count: Higgs.INF, instance: instance)
-    }
-    
-    open func set(_ name: String, shared: Bool, count: Int, instance: Any) -> Void {
+    final public func set(_ name: String, shared: Bool, count: Int, instance: Any) -> Void {
         self.add(Higgs: Higgs(name: name, shared: shared, count: count, instance: instance))
     }
     
-    // MARK: resolve higgs object
-    
-    open func get(_ name: String) -> Any? {
-        return resolve(name);
+    final public func set(_ name: String, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
+        self.add(Higgs: Higgs(name: name, shared: shared, count: count, closure: closure))
     }
     
-    open func resolve(_ name: String) -> Any? {
+    final public func get(_ name: String) -> Any? {
+        return resolve(name);
+    }
+
+    final public func resolve(_ name: String) -> Any? {
         guard let higgs = self.get(HiggsName: name) else {
             handle(Error: .serviceNotFound(service: name))
             return nil;
         }
         
-        print("\nResolving \(name)")
+        syncedPrint("\nResolving \(name)")
         
+        // Already resolved? use it!
         if higgs.resolved {
-            self.update(Higgs: higgs)
-            return higgs.instance
+            return use(Higgs: higgs)
         }
         
-        print("\tMissing")
+        syncedPrint("\tMissing")
         
         var object: Any? = nil
         
+        // Handle service dependencies (Step#2)
+        // All nested resolve(_:) calls are handled on private queue.
+        // When method is called on private queue get context 
+        // If context is found method call was done on private queue 
+        // as a result of method call in Step#1
         let key = Context.ContextKey
-        // MARK: Check if method called on private queue
-        // --
-        // Using static key allows us to test if we are running on private queue -
-        // if we are, then we are using queue context to run all service resolving 
-        // on that private queue
         if let queue_data = DispatchQueue.getSpecific(key: key) {
             if queue_data != nil {
                 if let unsafeData = queue_data {
@@ -289,22 +266,62 @@ open class Silicon {
         }
         
         // new resolver
-        let ctx = Context(withHiggs: higgs)
+        var ctx: Context? = nil
         
-        ctx.group.enter()
-        ctx.queue.async(execute: { [unowned silicon = self, unowned higgs, unowned ctx, unowned group = ctx.group] in
-            object = silicon.resolve(Higgs: higgs, onContext: ctx)
-            group.leave()
-            })
+        if higgs.shared {
+            // sync contexts
+            
+        } else {
+            // run on cotext
+        }
         
-        ctx.wait()
+//        servicesQueue.sync { [unowned self] in
+//            ctx = self.contexts[higgs]
+//        }
+//        
+//        if let context = ctx {
+//            context.group.wait(timeout: DispatchTime.distantFuture)
+        // if resolved ? (should be always resolved!)
+//            return context.higgs?.instance
+//        }
+//        
+        if ctx == nil {
+            ctx = Context(withHiggs: higgs)
+//            servicesQueue.sync { [unowned self] in
+//                self.contexts[higgs] = ctx
+//            }
+        }
+
+        var error: ResolveError? = nil
         
-        if let error = ctx.error {
+        if let context = ctx {
+            // Service instance resolution (Step#1)
+            // Service instances are resolved if not yet resolved 
+            // (or service is shared) service. Create a context
+            // and run all resolving on a separation private queue identified by specific key
+            context.group.enter()
+            context.queue.async(execute: { [unowned silicon = self] in
+                if let higgs = context.higgs {
+                    object = silicon.resolve(Higgs: higgs, onContext: context)
+                } else {
+                    context.error = .contextResolveError
+                }
+                context.group.leave()
+                })
+            context.group.wait(timeout: DispatchTime.distantFuture)
+            context.dispose()
+            
+            error = context.error
+        } else {
+            error = .failedToCreateContext(service: higgs.name)
+        }
+        
+        if let error = error {
             self.handle(Error: error)
             return nil
         }
         
-        print("\t<- \(object)")
+        syncedPrint("\t<- \(object)")
         return object
     }
     
@@ -312,37 +329,40 @@ open class Silicon {
         var instance = higgs.instance
         
         if instance == nil {
-            
-            // MARK: dont resolve on poluted stack
+            // Don't resolve on poluted stack
             if context.error != nil {
                 return nil
             }
             
             if context.contains(higgs.name) {
-                print("Circularity!!!");
+                // Circular serivces dependency.
+                // Further resolution will result in dead lock
+                // on context queue.
+                syncedPrint("Circularity!!!");
                 context.error = .circularDependency(service: context.higgs?.name, resolvingTree: context.resolveTrace)
                 return nil;
             }
             context.insert(higgs.name)
             
             if let definition = higgs.definition {
-                if higgs.shared {
-                    instance = definition.get(self)
-                    if instance == nil {
-                        context.error = .missingInstance(service: higgs.name)
-                    }
-                    higgs.instance = instance
-                    higgs.definition = nil
-                } else {
-                    instance = definition.closure(self)
+                // Fetch service instance from definition. For non-shared services
+                // definition closure call is synchronized. In other
+                // services closure is called on context queue
+                instance = definition.get(self)
+                if instance == nil {
+                    context.error = .missingInstance(service: higgs.name)
                 }
             } else {
                 context.error = .missingDefinition(service: context.higgs?.name)
             }
         }
         
-        self.update(Higgs: higgs)
-        
+        return use(Higgs: higgs)
+    }
+    
+    fileprivate func use(Higgs higgs: Higgs) -> Any? {
+        let instance = higgs.instance
+        update(Higgs: higgs)
         return instance
     }
     
@@ -351,7 +371,7 @@ open class Silicon {
             higgs.count -= 1
         }
         
-        print("count \(higgs.count)")
+        syncedPrint("count \(higgs.count)")
         
         if higgs.count == 0 {
             self.remove(Higgs: higgs)
@@ -392,7 +412,7 @@ open class Silicon {
             })
         } else {
             #if DEBUG
-                print("Error \(error)");
+                syncedPrint("Error \(error)");
             #endif
         }
     }
@@ -410,73 +430,131 @@ extension Si where Self: AnyObject {
     }
 }
 
-
-// MARK: Service management using SiService protocol
+// MARK: Service management by name
 
 extension Silicon {
     
-    class public func set(_ service: SiService, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
+    class final public func set(_ name: String, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
+        Silicon.set(name, shared: false, closure: closure);
+    }
+    
+    class final public func set(_ name: String, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
+        Silicon.set(name, shared: shared, count: Higgs.INF, closure: closure)
+    }
+    
+    class final public func set(_ name: String, instance: Any) -> Void {
+        Silicon.set(name, shared: false, instance: instance);
+    }
+    
+    class final public func set(_ name: String, shared: Bool, instance: Any) -> Void {
+        Silicon.set(name, shared: shared, count: Higgs.INF, instance: instance)
+    }
+    
+    class final public func set(_ name: String, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
+        Silicon.sharedInstance.set(name, shared: shared, count: count, closure: closure)
+    }
+    
+    class final public func set(_ name: String, shared: Bool, count: Int, instance: Any) -> Void {
+        Silicon.sharedInstance.set(name, shared: shared, count: count, instance: instance)
+    }
+    
+    class open func get(_ name: String) -> Any? {
+        return Silicon.sharedInstance.get(name)
+    }
+    
+    class open func resolve(_ name: String) -> Any? {
+        return Silicon.sharedInstance.resolve(name)
+    }
+    
+    final public func set(_ name: String, closure:@escaping (_ si: Silicon) -> Any?) -> Void {
+        self.set(name, shared: false, closure: closure);
+    }
+    
+    final public func set(_ name: String, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
+        self.set(name, shared: shared, count: Higgs.INF, closure: closure)
+    }
+    
+    final public func set(_ name: String, instance: Any) -> Void {
+        self.set(name, shared: false, instance: instance);
+    }
+    
+    final public func set(_ name: String, shared: Bool, instance: Any) -> Void {
+        self.set(name, shared: shared, count: Higgs.INF, instance: instance)
+    }
+}
+
+// MARK: Service management by SiService protocol
+
+extension Silicon {
+    
+    class final public func set(_ service: SiService, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
         Silicon.set(service, shared: false, closure: closure);
     }
     
-    class public func set(_ service: SiService, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
+    class final public func set(_ service: SiService, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
         Silicon.set(service, shared: shared, count: Higgs.INF, closure: closure)
     }
     
-    class public func set(_ service: SiService, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
+    class final public func set(_ service: SiService, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
         Silicon.set(service.name(), shared: shared, count: count, closure: closure)
     }
     
-    class public func set(_ service: SiService, instance: Any) -> Void {
+    class final public func set(_ service: SiService, instance: Any) -> Void {
         Silicon.set(service, shared: false, instance: instance);
     }
     
-    class public func set(_ service: SiService, shared: Bool, instance: Any) -> Void {
+    class final public func set(_ service: SiService, shared: Bool, instance: Any) -> Void {
         Silicon.set(service, shared: shared, count: Higgs.INF, instance: instance)
     }
     
-    class public func set(_ service: SiService, shared: Bool, count: Int, instance: Any) -> Void {
+    class final public func set(_ service: SiService, shared: Bool, count: Int, instance: Any) -> Void {
         Silicon.set(service.name(), shared: shared, count: count, instance: instance)
     }
     
-    public func set(_ service: SiService, closure:@escaping (_ si: Silicon) -> Any?) -> Void {
+    final public func set(_ service: SiService, closure:@escaping (_ si: Silicon) -> Any?) -> Void {
         self.set(service, shared: false, closure: closure);
     }
     
-    public func set(_ service: SiService, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
+    final public func set(_ service: SiService, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
         self.set(service, shared: shared, count: Higgs.INF, closure: closure)
     }
     
-    public func set(_ service: SiService, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
+    final public func set(_ service: SiService, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
         self.set(service.name(), shared:  shared, count:  count, closure: closure);
     }
     
-    public func set(_ service: SiService, instance: Any) -> Void {
+    final public func set(_ service: SiService, instance: Any) -> Void {
         self.set(service, shared: false, instance: instance);
     }
     
-    public func set(_ service: SiService, shared: Bool, instance: Any) -> Void {
+    final public func set(_ service: SiService, shared: Bool, instance: Any) -> Void {
         self.set(service, shared: shared, count: Higgs.INF, instance: instance)
     }
     
-    public func set(_ service: SiService, shared: Bool, count: Int, instance: Any) -> Void {
+    final public func set(_ service: SiService, shared: Bool, count: Int, instance: Any) -> Void {
         self.set(service.name(), shared: shared, count: count, instance: instance);
     }
     
-    class public func get(_ service: SiService) -> Any? {
+    class final public func get(_ service: SiService) -> Any? {
         return Silicon.sharedInstance.get(service)
     }
     
-    class public func resolve(_ service: SiService) -> Any? {
+    class final public func resolve(_ service: SiService) -> Any? {
         return Silicon.sharedInstance.resolve(service)
     }
     
-    public func get(_ service: SiService) -> Any? {
+    final public func get(_ service: SiService) -> Any? {
         return get(service.name())
     }
     
-    public func resolve(_ service: SiService) -> Any? {
+    final public func resolve(_ service: SiService) -> Any? {
         return resolve(service.name())
     }
     
+}
+
+func syncedPrint(_ items: Any...) {
+    DispatchQueue.main.async {
+        print(items)
+    }
 }
