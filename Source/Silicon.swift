@@ -37,6 +37,10 @@ public protocol SiService {
 public protocol Si {
 }
 
+internal protocol Definition {
+    func get(_ si: Silicon) -> Any?
+}
+
 open class Silicon {
     
     public typealias Services = SiService;
@@ -51,8 +55,6 @@ open class Silicon {
         case serviceNotFound(service: String)
         
         case missingInstance(service: String)
-        
-        case failedToCreateContext(service: String)
         
         case contextResolveError
     }
@@ -76,7 +78,7 @@ open class Silicon {
         
         init(withHiggs: Higgs) {
             higgs = withHiggs
-            queue = DispatchQueue(label: Context.queueName(), attributes: []);
+            queue = DispatchQueue(label: Context.queueName(), qos: DispatchQoS.userInteractive)
             let selfPtr = Unmanaged<Silicon.Context>.passUnretained(self).toOpaque()
             let queueKey = UnsafeMutableRawPointer(selfPtr)
             queue.setSpecific(key: uid, value: queueKey);
@@ -107,7 +109,7 @@ open class Silicon {
     
     internal class Higgs: Hashable {
         
-        class Definition {
+        class ReusableDefinition: Definition {
             
             var closure: (_ si: Silicon) -> Any?
             
@@ -124,7 +126,7 @@ open class Silicon {
             }
         }
         
-        class SingletonDefinition: Definition {
+        class SingletonDefinition: ReusableDefinition {
 
             weak var higgs: Higgs?
 
@@ -158,7 +160,6 @@ open class Silicon {
 
         }
         
-        
         static let INF = -1
         
         var name: String
@@ -187,7 +188,7 @@ open class Silicon {
         
         convenience init(name: String, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) {
             self.init(name: name, shared: shared, count: count)
-            self.definition = shared ? Definition(closure: closure) : SingletonDefinition(withHiggs: self, closure: closure)
+            self.definition = shared ? SingletonDefinition(withHiggs: self, closure: closure) : ReusableDefinition(closure: closure)
         }
         
         convenience init(name: String, shared: Bool, count: Int, instance: Any) {
@@ -215,11 +216,11 @@ open class Silicon {
     
     private var contexts = [Higgs:Context]()
     
-    private let contextsQueue: DispatchQueue = DispatchQueue(label: "cat.thepirate.silicon.contexts", attributes: [])
+    private let contextsQueue: DispatchQueue = DispatchQueue(label: "cat.thepirate.silicon.contexts")
     
-    private let servicesQueue: DispatchQueue = DispatchQueue(label: "cat.thepirate.silicon.services", attributes: [])
+    private let servicesQueue: DispatchQueue = DispatchQueue(label: "cat.thepirate.silicon.services", attributes: [DispatchQueue.Attributes.concurrent])
     
-    private let errorsQueue: DispatchQueue = DispatchQueue(label: "cat.thepirate.silicon.errors", attributes: [])
+    private let errorsQueue: DispatchQueue = DispatchQueue(label: "cat.thepirate.silicon.errors", attributes: [DispatchQueue.Attributes.concurrent])
     
     final public func set(_ name: String, shared: Bool, count: Int, instance: Any) -> Void {
         self.add(Higgs: Higgs(name: name, shared: shared, count: count, instance: instance))
@@ -248,8 +249,6 @@ open class Silicon {
         
         syncedPrint("\tMissing")
         
-        var object: Any? = nil
-        
         // Handle service dependencies (Step#2)
         // All nested resolve(_:) calls are handled on private queue.
         // When method is called on private queue get context 
@@ -265,40 +264,34 @@ open class Silicon {
             }
         }
         
-        // new resolver
         var ctx: Context? = nil
+        var activeContext: Context? = nil
         
         if higgs.shared {
-            // sync contexts
-            
+            // Shared services are resolved on private synchronized queue
+            contextsQueue.sync { [unowned self] in
+                activeContext = self.contexts[higgs]
+                if activeContext == nil {
+                    ctx = Context(withHiggs: higgs)
+                    self.contexts[higgs] = ctx!
+                }
+            }
+
         } else {
-            // run on cotext
+            ctx = Context(withHiggs: higgs)
         }
         
-//        servicesQueue.sync { [unowned self] in
-//            ctx = self.contexts[higgs]
-//        }
-//        
-//        if let context = ctx {
-//            context.group.wait(timeout: DispatchTime.distantFuture)
-        // if resolved ? (should be always resolved!)
-//            return context.higgs?.instance
-//        }
-//        
-        if ctx == nil {
-            ctx = Context(withHiggs: higgs)
-//            servicesQueue.sync { [unowned self] in
-//                self.contexts[higgs] = ctx
-//            }
-        }
-
         var error: ResolveError? = nil
+        var object: Any? = nil
         
         if let context = ctx {
             // Service instance resolution (Step#1)
-            // Service instances are resolved if not yet resolved 
+            // Service instances are resolved if not yet resolved
             // (or service is shared) service. Create a context
             // and run all resolving on a separation private queue identified by specific key
+            //
+            // We are not using `queue.async(group: ..., execute:...)` as this can result in
+            // `wait` being signaled to early
             context.group.enter()
             context.queue.async(execute: { [unowned silicon = self] in
                 if let higgs = context.higgs {
@@ -309,11 +302,28 @@ open class Silicon {
                 context.group.leave()
                 })
             context.group.wait(timeout: DispatchTime.distantFuture)
+            syncedPrint("PRIMARY SYNCED")
+            contextsQueue.sync { [unowned self] in
+                self.contexts.removeValue(forKey: higgs)
+            }
             context.dispose()
-            
             error = context.error
-        } else {
-            error = .failedToCreateContext(service: higgs.name)
+        } else
+            if let context = activeContext {
+                // Service is already being resolved (Step#3)
+                // wait on its queue to get instance
+                // --
+                // @check: Is it possible to signal `wait` in Step#1
+                // before we block a group again
+                context.group.enter()
+                context.queue.sync { [unowned self, unowned context] in
+                    syncedPrint("SECONDARY SYNCED")
+                    object = self.use(Higgs: higgs)
+                    context.group.leave()
+                }
+                error = context.error
+            } else {
+                error = ResolveError.contextResolveError
         }
         
         if let error = error {
@@ -361,22 +371,24 @@ open class Silicon {
     }
     
     fileprivate func use(Higgs higgs: Higgs) -> Any? {
-        let instance = higgs.instance
-        update(Higgs: higgs)
+        var instance:Any? = nil
+        if higgs.count != 0 {
+            instance = higgs.instance
+            update(Higgs: higgs)
+        }
         return instance
     }
     
     fileprivate func update(Higgs higgs: Higgs) {
-        // MARK: non thread safe
-        if higgs.count > 0 {
-            higgs.count -= 1
-        }
-        
-        syncedPrint("count \(higgs.count)")
-        
-        if higgs.count == 0 {
-            self.remove(Higgs: higgs)
-        }
+        servicesQueue.sync(flags: .barrier, execute: { [unowned self] in
+            if higgs.count > 0 {
+                higgs.count -= 1
+            }
+            
+            if higgs.count == 0 {
+                self.remove(Higgs: higgs)
+            }
+        })
     }
     
     fileprivate func add(Higgs higgs: Higgs) -> Bool {

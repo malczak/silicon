@@ -37,7 +37,7 @@ class ViewController: UIViewController {
         
     
         var s = Silicon.sharedInstance
-        s.set(Services.OBJ_1, closure: { (si) in
+        s.set(Services.OBJ_1, shared: true, count: 2, closure: { (si) in
             print("fetch 1")
             let o = Obj1()
             o.a = (si.resolve(Services.OBJ_2)) as? Obj2
@@ -74,6 +74,8 @@ class ViewController: UIViewController {
             DispatchQueue.main.async{ print("q1") }
             if let obj1 = s.get(Services.OBJ_1) as? Obj1 {
                 DispatchQueue.main.async{ print("q1 -> obj1 \(obj1.a?.value)") }
+            } else {
+                DispatchQueue.main.async{ print("q1 -> MISSING") }
             }
             DispatchQueue.main.async{ print("q1 -> DONE") }
 
@@ -81,14 +83,18 @@ class ViewController: UIViewController {
         DispatchQueue.global(qos: .background).async {
             DispatchQueue.main.async{ print("q2") }
             if let obj1 = s.get(Services.OBJ_1) as? Obj1 {
-                DispatchQueue.main.async{ print("q1 -> obj1 \(obj1.a?.value)") }
+                DispatchQueue.main.async{ print("q2 -> obj1 \(obj1.a?.value)") }
+            } else {
+                DispatchQueue.main.async{ print("q2 -> MISSING") }
             }
             DispatchQueue.main.async{ print("q2 -> DONE") }
         }
         DispatchQueue.global(qos: .background).async {
             DispatchQueue.main.async{ print("q3") }
             if let obj1 = s.get(Services.OBJ_1) as? Obj1 {
-                DispatchQueue.main.async{ print("q1 -> obj1 \(obj1.a?.value)") }
+                DispatchQueue.main.async{ print("q3 -> obj1 \(obj1.a?.value)") }
+            } else {
+                DispatchQueue.main.async{ print("q3 -> MISSING") }
             }
             DispatchQueue.main.async{ print("q3 -> DONE") }
         }
