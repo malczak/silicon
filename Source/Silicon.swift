@@ -589,7 +589,9 @@ extension Silicon {
 }
 
 func syncedPrint(_ items: Any...) {
+    #if DEBUG
     DispatchQueue.main.async {
         print(items)
     }
+    #endif
 }
