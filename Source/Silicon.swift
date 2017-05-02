@@ -140,7 +140,7 @@ open class Silicon {
             }
             
             override func get(_ si: Silicon) -> Any? {
-                sema.wait(timeout: DispatchTime.distantFuture)
+                _ = sema.wait(timeout: DispatchTime.distantFuture)
                 if instance == nil {
                     instance = closure(si)
                     if let higgs = higgs {
@@ -222,12 +222,12 @@ open class Silicon {
     
     private let errorsQueue: DispatchQueue = DispatchQueue(label: "cat.thepirate.silicon.errors", attributes: [DispatchQueue.Attributes.concurrent])
     
-    final public func set(_ name: String, shared: Bool, count: Int, instance: Any) -> Void {
-        self.add(Higgs: Higgs(name: name, shared: shared, count: count, instance: instance))
+    final public func set(_ name: String, shared: Bool, count: Int, instance: Any) -> Bool {
+        return self.add(Higgs: Higgs(name: name, shared: shared, count: count, instance: instance))
     }
     
-    final public func set(_ name: String, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        self.add(Higgs: Higgs(name: name, shared: shared, count: count, closure: closure))
+    final public func set(_ name: String, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Bool {
+        return self.add(Higgs: Higgs(name: name, shared: shared, count: count, closure: closure))
     }
     
     final public func get(_ name: String) -> Any? {
@@ -301,9 +301,9 @@ open class Silicon {
                 }
                 context.group.leave()
                 })
-            context.group.wait(timeout: DispatchTime.distantFuture)
+            _ = context.group.wait(timeout: DispatchTime.distantFuture)
             syncedPrint("PRIMARY SYNCED")
-            contextsQueue.sync { [unowned self] in
+            _ = contextsQueue.sync { [unowned self] in
                 self.contexts.removeValue(forKey: higgs)
             }
             context.dispose()
@@ -331,7 +331,7 @@ open class Silicon {
             return nil
         }
         
-        syncedPrint("\t<- \(object)")
+        syncedPrint("\t<- \(object ?? "null")")
         return object
     }
     
@@ -447,28 +447,34 @@ extension Si where Self: AnyObject {
 
 extension Silicon {
     
-    class final public func set(_ name: String, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        Silicon.set(name, shared: false, closure: closure);
+    @discardableResult
+    class final public func set(_ name: String, closure: @escaping (_ si:Silicon) -> Any?) -> Bool {
+        return Silicon.set(name, shared: false, closure: closure);
     }
     
-    class final public func set(_ name: String, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        Silicon.set(name, shared: shared, count: Higgs.INF, closure: closure)
+    @discardableResult
+    class final public func set(_ name: String, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Bool {
+        return Silicon.set(name, shared: shared, count: Higgs.INF, closure: closure)
     }
     
-    class final public func set(_ name: String, instance: Any) -> Void {
-        Silicon.set(name, shared: false, instance: instance);
+    @discardableResult
+    class final public func set(_ name: String, instance: Any) -> Bool {
+        return Silicon.set(name, shared: false, instance: instance);
     }
     
-    class final public func set(_ name: String, shared: Bool, instance: Any) -> Void {
-        Silicon.set(name, shared: shared, count: Higgs.INF, instance: instance)
+    @discardableResult
+    class final public func set(_ name: String, shared: Bool, instance: Any) -> Bool {
+        return Silicon.set(name, shared: shared, count: Higgs.INF, instance: instance)
     }
     
-    class final public func set(_ name: String, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        Silicon.sharedInstance.set(name, shared: shared, count: count, closure: closure)
+    @discardableResult
+    class final public func set(_ name: String, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Bool {
+        return Silicon.sharedInstance.set(name, shared: shared, count: count, closure: closure)
     }
     
-    class final public func set(_ name: String, shared: Bool, count: Int, instance: Any) -> Void {
-        Silicon.sharedInstance.set(name, shared: shared, count: count, instance: instance)
+    @discardableResult
+    class final public func set(_ name: String, shared: Bool, count: Int, instance: Any) -> Bool {
+        return Silicon.sharedInstance.set(name, shared: shared, count: count, instance: instance)
     }
     
     class open func get(_ name: String) -> Any? {
@@ -479,20 +485,24 @@ extension Silicon {
         return Silicon.sharedInstance.resolve(name)
     }
     
-    final public func set(_ name: String, closure:@escaping (_ si: Silicon) -> Any?) -> Void {
-        self.set(name, shared: false, closure: closure);
+    @discardableResult
+    final public func set(_ name: String, closure:@escaping (_ si: Silicon) -> Any?) -> Bool {
+        return self.set(name, shared: false, closure: closure);
     }
     
-    final public func set(_ name: String, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        self.set(name, shared: shared, count: Higgs.INF, closure: closure)
+    @discardableResult
+    final public func set(_ name: String, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Bool {
+        return self.set(name, shared: shared, count: Higgs.INF, closure: closure)
     }
     
-    final public func set(_ name: String, instance: Any) -> Void {
-        self.set(name, shared: false, instance: instance);
+    @discardableResult
+    final public func set(_ name: String, instance: Any) -> Bool {
+        return self.set(name, shared: false, instance: instance);
     }
     
-    final public func set(_ name: String, shared: Bool, instance: Any) -> Void {
-        self.set(name, shared: shared, count: Higgs.INF, instance: instance)
+    @discardableResult
+    final public func set(_ name: String, shared: Bool, instance: Any) -> Bool {
+        return self.set(name, shared: shared, count: Higgs.INF, instance: instance)
     }
 }
 
@@ -500,52 +510,64 @@ extension Silicon {
 
 extension Silicon {
     
-    class final public func set(_ service: SiService, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        Silicon.set(service, shared: false, closure: closure);
+    @discardableResult
+    class final public func set(_ service: SiService, closure: @escaping (_ si:Silicon) -> Any?) -> Bool {
+        return Silicon.set(service, shared: false, closure: closure);
     }
     
-    class final public func set(_ service: SiService, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        Silicon.set(service, shared: shared, count: Higgs.INF, closure: closure)
+    @discardableResult
+    class final public func set(_ service: SiService, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Bool {
+        return Silicon.set(service, shared: shared, count: Higgs.INF, closure: closure)
     }
     
-    class final public func set(_ service: SiService, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        Silicon.set(service.name(), shared: shared, count: count, closure: closure)
+    @discardableResult
+    class final public func set(_ service: SiService, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Bool {
+        return Silicon.set(service.name(), shared: shared, count: count, closure: closure)
     }
     
-    class final public func set(_ service: SiService, instance: Any) -> Void {
-        Silicon.set(service, shared: false, instance: instance);
+    @discardableResult
+    class final public func set(_ service: SiService, instance: Any) -> Bool {
+        return Silicon.set(service, shared: false, instance: instance);
     }
     
-    class final public func set(_ service: SiService, shared: Bool, instance: Any) -> Void {
-        Silicon.set(service, shared: shared, count: Higgs.INF, instance: instance)
+    @discardableResult
+    class final public func set(_ service: SiService, shared: Bool, instance: Any) -> Bool {
+        return Silicon.set(service, shared: shared, count: Higgs.INF, instance: instance)
     }
     
-    class final public func set(_ service: SiService, shared: Bool, count: Int, instance: Any) -> Void {
-        Silicon.set(service.name(), shared: shared, count: count, instance: instance)
+    @discardableResult
+    class final public func set(_ service: SiService, shared: Bool, count: Int, instance: Any) -> Bool {
+        return Silicon.set(service.name(), shared: shared, count: count, instance: instance)
     }
     
-    final public func set(_ service: SiService, closure:@escaping (_ si: Silicon) -> Any?) -> Void {
-        self.set(service, shared: false, closure: closure);
+    @discardableResult
+    final public func set(_ service: SiService, closure:@escaping (_ si: Silicon) -> Any?) -> Bool {
+        return self.set(service, shared: false, closure: closure);
     }
     
-    final public func set(_ service: SiService, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        self.set(service, shared: shared, count: Higgs.INF, closure: closure)
+    @discardableResult
+    final public func set(_ service: SiService, shared: Bool, closure: @escaping (_ si:Silicon) -> Any?) -> Bool {
+        return self.set(service, shared: shared, count: Higgs.INF, closure: closure)
     }
     
-    final public func set(_ service: SiService, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Void {
-        self.set(service.name(), shared:  shared, count:  count, closure: closure);
+    @discardableResult
+    final public func set(_ service: SiService, shared: Bool, count: Int, closure: @escaping (_ si:Silicon) -> Any?) -> Bool {
+        return self.set(service.name(), shared:  shared, count:  count, closure: closure);
     }
     
-    final public func set(_ service: SiService, instance: Any) -> Void {
-        self.set(service, shared: false, instance: instance);
+    @discardableResult
+    final public func set(_ service: SiService, instance: Any) -> Bool {
+        return self.set(service, shared: false, instance: instance);
     }
     
-    final public func set(_ service: SiService, shared: Bool, instance: Any) -> Void {
-        self.set(service, shared: shared, count: Higgs.INF, instance: instance)
+    @discardableResult
+    final public func set(_ service: SiService, shared: Bool, instance: Any) -> Bool {
+        return self.set(service, shared: shared, count: Higgs.INF, instance: instance)
     }
     
-    final public func set(_ service: SiService, shared: Bool, count: Int, instance: Any) -> Void {
-        self.set(service.name(), shared: shared, count: count, instance: instance);
+    @discardableResult
+    final public func set(_ service: SiService, shared: Bool, count: Int, instance: Any) -> Bool {
+        return self.set(service.name(), shared: shared, count: count, instance: instance);
     }
     
     class final public func get(_ service: SiService) -> Any? {
