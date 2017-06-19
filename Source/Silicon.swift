@@ -604,7 +604,6 @@ public func inject<T>(_ service: SiService) -> T? {
     return Silicon.shared.get(service)
 }
 
-
 #if DEBUG
     func SiLogPrint(_ message: String) {
         print(message)
