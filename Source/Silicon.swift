@@ -42,6 +42,62 @@ internal protocol Definition {
 }
 
 open class Silicon {
+    public class Bag {
+        private class BagData {
+            var storage = [String:Any]()
+            
+            public subscript(name: String) -> Any? {
+                get {
+                    return storage[name]
+                }
+                set(newValue) {
+                    if newValue != nil {
+                        storage[name] = newValue
+                    } else {
+                        storage.removeValue(forKey: name)
+                    }
+                }
+            }
+
+            deinit {
+                storage.removeAll()
+            }
+        }
+        
+        private var id: String? = nil
+        
+        private weak var data: BagData? = nil
+        
+        public init(_ id: String) {
+            let id = "cat.thepirate.silicon.bag.\(id)"
+
+            let si = Silicon.shared
+            var bagData: BagData? = nil
+            if let existingData = si.get(id) as? BagData{
+                bagData = existingData
+            } else {
+                bagData = BagData()
+                si.set(id, instance: bagData!)
+                self.id = id
+            }
+            data = bagData
+        }
+        
+        public subscript(name: String) -> Any? {
+            get {
+                return data?[name]
+            }
+            set(newValue) {
+                data?[name] = newValue
+            }
+        }
+        
+        deinit {
+            if let id = id {
+                Silicon.shared.remove(id)
+            }
+        }
+    }
     
     public typealias Services = SiService;
     
@@ -602,6 +658,16 @@ extension Silicon {
 
 public func inject<T>(_ service: SiService) -> T? {
     return Silicon.shared.get(service)
+}
+
+precedencegroup Inject {
+    associativity: right
+}
+
+infix operator <~ : Inject
+
+public func <~<T>(lhs: inout T?, rhs: SiService) {
+    lhs = Silicon.shared.get(rhs)
 }
 
 #if DEBUG
