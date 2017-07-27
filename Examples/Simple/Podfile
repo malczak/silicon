@@ -6,19 +6,6 @@ platform :ios, '8.0'
 
 target "Simple" do
 
-#  pod 'CocoaLumberjack'
-
-#  pod 'MagicalRecord', '~> 2.3.2'
-
-#  pod "MagicalRecord/CocoaLumberjack"
-
-#  pod 'AMPopTip'
-
-#  pod 'TSMessages'
-
-
-  #development
-
   pod 'Silicon', :path => './../../'
 
 end
