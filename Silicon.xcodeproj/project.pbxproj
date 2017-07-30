@@ -7,15 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		32B113D11F2AA2FC00903CA5 /* Silicon.h in Headers */ = {isa = PBXBuildFile; fileRef = 32B113CF1F2AA2FC00903CA5 /* Silicon.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		32B113DC1F2AA4A200903CA5 /* Silicon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B113D91F2AA4A200903CA5 /* Silicon.swift */; };
+		3261E8FD1F2E889F001E264F /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3261E8FA1F2E889F001E264F /* Info.plist */; };
+		3261E8FE1F2E889F001E264F /* Silicon.h in Headers */ = {isa = PBXBuildFile; fileRef = 3261E8FB1F2E889F001E264F /* Silicon.h */; };
+		3261E8FF1F2E889F001E264F /* Silicon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3261E8FC1F2E889F001E264F /* Silicon.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		3261E8FA1F2E889F001E264F /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Source/Info.plist; sourceTree = SOURCE_ROOT; };
+		3261E8FB1F2E889F001E264F /* Silicon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Silicon.h; path = Source/Silicon.h; sourceTree = SOURCE_ROOT; };
+		3261E8FC1F2E889F001E264F /* Silicon.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Silicon.swift; path = Source/Silicon.swift; sourceTree = SOURCE_ROOT; };
 		32B113CC1F2AA2FC00903CA5 /* Silicon.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Silicon.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		32B113CF1F2AA2FC00903CA5 /* Silicon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Silicon.h; sourceTree = "<group>"; };
-		32B113D01F2AA2FC00903CA5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		32B113D91F2AA4A200903CA5 /* Silicon.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Silicon.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,9 +49,9 @@
 		32B113CE1F2AA2FC00903CA5 /* Source */ = {
 			isa = PBXGroup;
 			children = (
-				32B113D91F2AA4A200903CA5 /* Silicon.swift */,
-				32B113CF1F2AA2FC00903CA5 /* Silicon.h */,
-				32B113D01F2AA2FC00903CA5 /* Info.plist */,
+				3261E8FA1F2E889F001E264F /* Info.plist */,
+				3261E8FB1F2E889F001E264F /* Silicon.h */,
+				3261E8FC1F2E889F001E264F /* Silicon.swift */,
 			);
 			name = Source;
 			path = Silicon;
@@ -63,7 +64,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				32B113D11F2AA2FC00903CA5 /* Silicon.h in Headers */,
+				3261E8FE1F2E889F001E264F /* Silicon.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -127,6 +128,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3261E8FD1F2E889F001E264F /* Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -137,7 +139,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				32B113DC1F2AA4A200903CA5 /* Silicon.swift in Sources */,
+				3261E8FF1F2E889F001E264F /* Silicon.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
