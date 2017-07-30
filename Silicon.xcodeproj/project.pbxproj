@@ -7,15 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		3261E8FD1F2E889F001E264F /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3261E8FA1F2E889F001E264F /* Info.plist */; };
-		3261E8FE1F2E889F001E264F /* Silicon.h in Headers */ = {isa = PBXBuildFile; fileRef = 3261E8FB1F2E889F001E264F /* Silicon.h */; };
 		3261E8FF1F2E889F001E264F /* Silicon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3261E8FC1F2E889F001E264F /* Silicon.swift */; };
+		3261E9201F2E8ADC001E264F /* Silicon.h in Headers */ = {isa = PBXBuildFile; fileRef = 3261E91F1F2E8ADC001E264F /* Silicon.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		3261E9211F2E8AE1001E264F /* Silicon.h in Resources */ = {isa = PBXBuildFile; fileRef = 3261E91F1F2E8ADC001E264F /* Silicon.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		3261E8FA1F2E889F001E264F /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Source/Info.plist; sourceTree = SOURCE_ROOT; };
-		3261E8FB1F2E889F001E264F /* Silicon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Silicon.h; path = Source/Silicon.h; sourceTree = SOURCE_ROOT; };
 		3261E8FC1F2E889F001E264F /* Silicon.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Silicon.swift; path = Source/Silicon.swift; sourceTree = SOURCE_ROOT; };
+		3261E91F1F2E8ADC001E264F /* Silicon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Silicon.h; path = Source/Silicon.h; sourceTree = SOURCE_ROOT; };
 		32B113CC1F2AA2FC00903CA5 /* Silicon.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Silicon.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -50,7 +50,7 @@
 			isa = PBXGroup;
 			children = (
 				3261E8FA1F2E889F001E264F /* Info.plist */,
-				3261E8FB1F2E889F001E264F /* Silicon.h */,
+				3261E91F1F2E8ADC001E264F /* Silicon.h */,
 				3261E8FC1F2E889F001E264F /* Silicon.swift */,
 			);
 			name = Source;
@@ -64,7 +64,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3261E8FE1F2E889F001E264F /* Silicon.h in Headers */,
+				3261E9201F2E8ADC001E264F /* Silicon.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -128,7 +128,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3261E8FD1F2E889F001E264F /* Info.plist in Resources */,
+				3261E9211F2E8AE1001E264F /* Silicon.h in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -257,7 +257,7 @@
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
-				INFOPLIST_FILE = Silicon/Info.plist;
+				INFOPLIST_FILE = Source/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = cat.thepirate.ios.Silicon;
@@ -278,7 +278,7 @@
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
-				INFOPLIST_FILE = Silicon/Info.plist;
+				INFOPLIST_FILE = Source/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = cat.thepirate.ios.Silicon;
