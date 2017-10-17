@@ -129,7 +129,7 @@ open class Silicon {
         var resolveTrace = Set<String>()
         
         lazy var uid: DispatchSpecificKey<UnsafeMutableRawPointer?> = {
-            return ContextKey
+            return Context.ContextKey
         }()
         
         init(withHiggs: Higgs) {
@@ -631,6 +631,10 @@ extension Silicon {
         return self.remove(service.name())
     }
 
+    class final public func get<T>(_ service: SiService) -> T? {
+        return get(service.name()) as? T
+    }
+    
     class final public func get(_ service: SiService) -> Any? {
         return Silicon.shared.get(service)
     }
