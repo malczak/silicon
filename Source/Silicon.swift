@@ -578,7 +578,7 @@ extension Silicon {
     
     @discardableResult
     class final public func set(_ service: SiService, closure: @escaping (_ si:Silicon) -> Any?) -> Bool {
-        return Silicon.set(service, shared: false, closure: closure);
+        return Silicon.set(service, shared: true, closure: closure);
     }
     
     @discardableResult
@@ -603,7 +603,7 @@ extension Silicon {
     
     @discardableResult
     final public func set(_ service: SiService, closure:@escaping (_ si: Silicon) -> Any?) -> Bool {
-        return self.set(service, shared: false, closure: closure);
+        return self.set(service, shared: true, closure: closure);
     }
     
     @discardableResult
