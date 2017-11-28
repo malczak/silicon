@@ -1,4 +1,4 @@
-# silicon
+# Silicon
 
 Simple dependency injection / service locator for Swift applications
 
@@ -51,7 +51,7 @@ let instance2 = Silicon.get('myService')
 let shared1 = Silicon.get('mySharedService')
 let shared2 = Silicon.get('mySharedService')
 
-// any following calls for 'mySharedService' will result in nill - service availability was set only to 2
+// any following calls for 'mySharedService' will result in nil - service availability was set only to 2
 
 let shared3 = Silicon.get('mySharedService')
 

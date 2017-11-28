@@ -60,14 +60,6 @@ fabric.properties
 # Sonarlint plugin
 .idea/sonarlint
 
-### Carthage ###
-# Carthage
-#
-# Add this line if you want to avoid checking in source code from Carthage dependencies.
-# Carthage/Checkouts
-
-Carthage/Build
-
 ### macOS ###
 *.DS_Store
 .AppleDouble
@@ -97,8 +89,6 @@ Temporary Items
 
 ### Xcode ###
 # Xcode
-#
-# gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
 
 ## Build generated
 build/
@@ -131,7 +121,11 @@ xcuserdata/
 ### CocoaPods ###
 ## CocoaPods GitIgnore Template
 
-# CocoaPods - Only use to conserve bandwidth / Save time on Pushing
-#           - Also handy if you have a lage number of dependant pods
-#           - AS PER https://guides.cocoapods.org/using/using-cocoapods.html NEVER IGONRE THE LOCK FILE
 Pods/
+
+### Carthage ###
+# Carthage
+
+Carthage/Checkouts
+
+Carthage/Build
