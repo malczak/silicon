@@ -13,7 +13,3 @@ FOUNDATION_EXPORT double SiliconVersionNumber;
 
 //! Project version string for Silicon.
 FOUNDATION_EXPORT const unsigned char SiliconVersionString[];
-
-// In this header, you should import all the public headers of your framework using statements like #import <Silicon/PublicHeader.h>
-
-
